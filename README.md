@@ -14,4 +14,4 @@ example:
 
 If you want to create lobby just ping bot with typing `@gamingrootbot` (or your newly created instance) to textbox and wait 'till bot automagically give you a clue with your subscribed games! Once you pick a game just click on proper field to create lobby and tag everyone that subscribes same game in case they would want to play with you!
 
-Special thanks to @JuniorJPDJ for creating this desription in our native language.
+Special thanks to [JuniorJPDJ](https://github.com/juniorjpdj) for creating this desription in our native language.
