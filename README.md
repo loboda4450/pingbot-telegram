@@ -1,7 +1,5 @@
 # PingBot
 
-### Simple telegram bot to ping your buddies to play some games.
-
 #### You wanna play? Gather friends? Use bot!
 
 If you want to add game to your library just click "Subscribe" button under lobby message, otherwise use command:
