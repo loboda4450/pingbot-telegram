@@ -1,0 +1,9 @@
+version: '3.7'
+
+services:
+  bot:
+    build: .
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+      - ./users.db
+    restart: unless-stopped
