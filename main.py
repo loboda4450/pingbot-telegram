@@ -74,16 +74,26 @@ def get_game_users(cur: sqlite3.Cursor, event):
                                       (event.chat.id, event.text.split(' ', 1)[1], event.message.sender.id)).fetchall()]
 
 
-def get_lobby(cur: sqlite3.Cursor, event) -> Dict:
+async def get_lobby(cur: sqlite3.Cursor, event) -> Dict:
     try:
-        lobby = cur.execute("SELECT id, ownerid, chatid, game, participants, pings_messages FROM lobbies WHERE id == ?",
-                            (event.message_id,)).fetchone()
-        return {'id': lobby[0],
-                'ownerid': lobby[1],
-                'chatid': lobby[2],
-                'game': lobby[3],
-                'participants': lobby[4],
-                'pings': lobby[5]}
+        lobby_msg = await event.get_message()
+        lobby = cur.execute("SELECT lobbyid, ownerid, chatid, game, participant, ping FROM lobbies WHERE lobbyid == ? and chatid == ?",
+                            (lobby_msg.id, event.chat.id,)).fetchall()
+        keys = [x[0] for x in cur.description]
+
+        return [{keys[0]: user[0],
+                keys[1]: user[1],
+                keys[2]: user[2],
+                keys[3]: user[3],
+                keys[4]: user[4],
+                keys[5]: user[5]} for user in lobby]
+
+        # return {'lobbyid': lobby[0],
+        #         'ownerid': lobby[1],
+        #         'chatid': lobby[2],
+        #         'game': lobby[3],
+        #         'participants': lobby[4],
+        #         'pings': lobby[5]}
 
     except TypeError:
         raise Exception('Wrong lobby id!')
@@ -110,7 +120,7 @@ async def main(config):
     con = sqlite3.connect('users.db')
     cur = con.cursor()
     # cur.execute('''DROP TABLE users''')
-    cur.execute('''DROP TABLE lobbies''')
+    # cur.execute('''DROP TABLE lobbies''')
     print('Creating users database')
     cur.execute(
         """CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -167,7 +177,7 @@ async def main(config):
     async def ping_guys(event):
         game = event.text.split(' ', 1)[1]
         game_users = get_game_users(cur, event)
-        chat_users = dict(await get_chat_users(client, event, details='uid'))
+        chat_users = dict(await get_chat_users(client=client, event=event, details='uid'))
 
         lobby = await event.reply(
             f'Lobby: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})\n'
@@ -279,13 +289,13 @@ async def main(config):
         # users = game_users(cur, event)
         # chat_users = dict(await get_chat_users(client, event, details='uid'))
         try:
-            lobby = get_lobby(cur, event)
-            # await event.reply(dumps(lobby))
-            r = await client.get_messages(lobby['chatid'], ids=1045)
+            lobby = await get_lobby(cur, event)
+            print(lobby)
+            await event.reply(f'```{dumps(lobby)}```')
 
-            for msg in lobby['pings'].split(','):
-                if msg:
-                    await client.edit_message(entity=int(lobby['chatid']), message=int(msg), text='zmienione')
+            # for msg in lobby['pings'].split(','):
+            #     if msg:
+            #         await client.edit_message(entity=int(lobby['chatid']), message=int(msg), text='zmienione')
 
         except telethon.errors.MessageNotModifiedError as e:
             print(e)
