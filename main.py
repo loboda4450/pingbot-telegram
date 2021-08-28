@@ -58,10 +58,11 @@ def subscribe_db(_con: sqlite3.Connection, _cur: sqlite3.Cursor, _userid: int, _
 
 
 def add_lobby_to_db(con: sqlite3.Connection, cur: sqlite3.Cursor, lobby_id: int, owner_id: int, chat_id: int, game: str,
-                    participant: int, ping_id: int) -> None:
+                    participant: int, ping_id: int, in_lobby: bool) -> None:
     """Adds every pinged user from lobby to database"""
-    cur.execute("INSERT INTO lobbies(lobbyid, ownerid, chatid, game, participant, ping) VALUES (?,?,?,?,?,?)",
-                (lobby_id, owner_id, chat_id, game, participant, ping_id))
+    cur.execute(
+        "INSERT INTO lobbies(lobbyid, ownerid, chatid, game, participant, ping, in_lobby) VALUES (?,?,?,?,?,?,?)",
+        (lobby_id, owner_id, chat_id, game, participant, ping_id, in_lobby))
     con.commit()
 
 
@@ -77,9 +78,9 @@ def chat_games(cur: sqlite3.Cursor, event) -> List:
 
 
 def get_game_users(cur: sqlite3.Cursor, event) -> List:
-    """Gets game users from database and format it friendly way"""
+    """Gets game users other than event requester from database and format it friendly way"""
     return [x[0] for x in cur.execute("SELECT userid FROM users WHERE chatid == ? AND game == ? AND userid != ?",
-                                      (event.chat.id, event.text.split(' ', 1)[1], event.message.sender.id)).fetchall()]
+                                      (event.chat.id, event.text.split(' ', 1)[1], event.sender.id)).fetchall()]
 
 
 async def get_lobby(cur: sqlite3.Cursor, event) -> List[Dict]:
@@ -87,7 +88,7 @@ async def get_lobby(cur: sqlite3.Cursor, event) -> List[Dict]:
     try:
         lobby_msg = await event.get_message()
         lobby = cur.execute(
-            "SELECT lobbyid, ownerid, chatid, game, participant, ping FROM lobbies WHERE lobbyid == ? and chatid == ?",
+            "SELECT lobbyid, ownerid, chatid, game, participant, ping, in_lobby FROM lobbies WHERE lobbyid == ? and chatid == ?",
             (lobby_msg.id, event.chat.id,)).fetchall()
         keys = [x[0] for x in cur.description]
 
@@ -96,7 +97,8 @@ async def get_lobby(cur: sqlite3.Cursor, event) -> List[Dict]:
                  keys[2]: user[2],
                  keys[3]: user[3],
                  keys[4]: user[4],
-                 keys[5]: user[5]} for user in lobby] if lobby else [{'error': 'lobby does not exist in database'}]
+                 keys[5]: user[5],
+                 keys[6]: user[6]} for user in lobby] if lobby else [{'error': 'lobby does not exist in database'}]
 
     except TypeError:
         raise Exception('Wrong lobby id!')
@@ -140,7 +142,8 @@ async def main(config):
                                                chatid INTEGER, 
                                                game TEXT, 
                                                participant INTEGER, 
-                                               ping INTEGER)""")
+                                               ping INTEGER,
+                                               in_lobby BOOLEAN)""")
     print('Created lobbies database')
     client = TelegramClient(**config['telethon_settings'])
     print("Starting")
@@ -177,18 +180,29 @@ async def main(config):
             [event.builder.article(f'{g}', text=f'/announce {g}') for g in games])
 
     @client.on(events.NewMessage(pattern='/announce'))
-    async def ping_guys(event):
+    async def announce(event):
         game = event.text.split(' ', 1)[1]
         game_users = get_game_users(cur, event)
         chat_users = dict(await get_chat_users(client=client, event=event, details='uid'))
 
-        lobby = await event.reply(
-            f'Lobby: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})\n'
-            f'Game: {game}\n',
-            buttons=[[Button.inline('Ping')], [Button.inline('Join'), Button.inline('Leave')],
-                     [Button.inline('Subscribe'), Button.inline('Unsubscribe')]])
-
         if game_users and chat_users:
+            lobby = await event.reply(
+                f'Lobby: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})\n'
+                f'Game: {game}\n',
+                buttons=[[Button.inline('Ping')], [Button.inline('Join'), Button.inline('Leave')],
+                         [Button.inline('Subscribe'), Button.inline('Unsubscribe')]])
+
+            # TODO: Refactor code from 195, i think i can do better
+            add_lobby_to_db(con=con,
+                            cur=cur,
+                            lobby_id=lobby.id,
+                            owner_id=event.sender.id,
+                            chat_id=event.chat.id,
+                            game=game,
+                            participant=event.sender.id,
+                            ping_id=lobby.id,
+                            in_lobby=True)
+
             for chunk in [game_users[x: x + 5] for x in range(0, len(game_users), 5)]:
                 if lobby_chunk := ", ".join(
                         f"[{chat_users[id_]}](tg://user?id={id_})" for id_ in chunk if id_ in chat_users):
@@ -202,7 +216,8 @@ async def main(config):
                                             chat_id=event.chat.id,
                                             game=game,
                                             participant=user,
-                                            ping_id=ping.id)
+                                            ping_id=ping.id,
+                                            in_lobby=user == event.sender.id)
 
     # @client.on(events.NewMessage(pattern='/start'))
     # async def start(event):
