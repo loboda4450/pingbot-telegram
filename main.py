@@ -2,13 +2,13 @@ import asyncio
 import logging
 import sqlite3
 import re
-from typing import List, Tuple, Dict
+from typing import List, Dict
 from json import dumps
 
 import telethon.client
 from telethon import TelegramClient, events, Button
 import yaml
-from telethon.tl.types import User, PeerUser
+from telethon.tl.types import User
 
 HELP1 = 'Commands:\n' \
         '/subscribe <game>: Get notified about newly created lobbies\n' \
@@ -25,7 +25,7 @@ def escape_markdown(text: str) -> str:
     return reparse
 
 
-def get_sender_name(sender: User) -> str:  # fuck davson
+def get_sender_name(sender: User) -> str:  # fuck @divadsn
     """Returns the sender's username or full name if there is no username"""
     if sender.username:
         return "" + sender.username
@@ -41,7 +41,7 @@ def get_sender_name(sender: User) -> str:  # fuck davson
 
 def is_empty(lobby: str) -> bool:
     """Checks if lobby is empty
-    TODO: Rework, wont work after future code edits
+    TODO: Rework with database, will work after future code edits but also will make no sense
     """
     return len(lobby.split(':', 1)[1]) == 0
 
@@ -248,6 +248,7 @@ async def main(config):
 
     @client.on(events.CallbackQuery(pattern=b'Unsubscribe'))
     async def unsubscribe_button(event):
+        # TODO: Rethink that database access there
         replied_to = await event.get_message()
         print(replied_to)
         if 'Game:' in replied_to.text:
@@ -266,6 +267,7 @@ async def main(config):
 
     @client.on(events.CallbackQuery(pattern=b'Join'))
     async def join_button(event):
+        # TODO: Reimplement
         # replied_to = await event.get_message()
         # t = replied_to.text
         # if 'Lobby' in t and 'Game' in t:
@@ -279,10 +281,11 @@ async def main(config):
         # 		await event.answer("You're already in the lobby")
         # else:
         # 	await event.answer(HELP1, alert=True)
-        await event.answer('To be implemented', alert=True)
+        await event.answer('To be reimplemented', alert=True)
 
     @client.on(events.CallbackQuery(pattern=b'Leave'))
     async def leave_button(event):
+        # TODO: Reimplement
         # replied_to = await event.get_message()
         # t = replied_to.text
         # if 'Lobby' in t and 'Game' in t:
@@ -300,10 +303,11 @@ async def main(config):
         # 		await event.answer("You were not in the lobby")
         # else:
         # 	await event.answer(HELP1, alert=True)
-        await event.answer('To be implemented', alert=True)
+        await event.answer('To be reimplemented', alert=True)
 
     @client.on(events.CallbackQuery(pattern=b'Ping'))
     async def ping_button(event):
+        # TODO: Finish implementing
         # users = game_users(cur, event)
         # chat_users = dict(await get_chat_users(client, event, details='uid'))
         try:
