@@ -18,11 +18,11 @@ HELP1 = 'Commands:\n' \
         '/announce <game>: Manually create a lobby'
 
 
-# def escape_markdown(text: str) -> str:
-# 	"""Escape markdown to prevent markdown injection"""
-# 	parse = re.sub(r"([_*\[\]()~`>\#\+\-=|\.!])", r"\\\1", text)
-# 	reparse = re.sub(r"\\\\([_*\[\]()~`>\#\+\-=|\.!])", r"\1", parse)
-# 	return reparse
+def escape_markdown(text: str) -> str:
+    """Escape markdown to prevent markdown injection XDD"""
+    parse = re.sub(r"([_*\[\]()~`>\#\+\-=|\.!])", r"\\\1", text)
+    reparse = re.sub(r"\\\\([_*\[\]()~`>\#\+\-=|\.!])", r"\1", parse)
+    return reparse
 
 
 def get_sender_name(sender: User) -> str:  # fuck davson
@@ -40,6 +40,9 @@ def get_sender_name(sender: User) -> str:  # fuck davson
 
 
 def is_empty(lobby: str) -> bool:
+    """Checks if lobby is empty
+    TODO: Rework, wont work after future code edits
+    """
     return len(lobby.split(':', 1)[1]) == 0
 
 
@@ -48,6 +51,7 @@ def parse_lobby(event) -> List:
 
 
 def subscribe_db(_con: sqlite3.Connection, _cur: sqlite3.Cursor, _userid: int, _chatid: int, _game: str) -> None:
+    """Adds a game subscriber to database"""
     _cur.execute("INSERT INTO users(userid, chatid, game) VALUES (?, ?, ?)", (
         _userid, _chatid, _game,))
     _con.commit()
@@ -55,45 +59,44 @@ def subscribe_db(_con: sqlite3.Connection, _cur: sqlite3.Cursor, _userid: int, _
 
 def add_lobby_to_db(con: sqlite3.Connection, cur: sqlite3.Cursor, lobby_id: int, owner_id: int, chat_id: int, game: str,
                     participant: int, ping_id: int) -> None:
+    """Adds every pinged user from lobby to database"""
     cur.execute("INSERT INTO lobbies(lobbyid, ownerid, chatid, game, participant, ping) VALUES (?,?,?,?,?,?)",
                 (lobby_id, owner_id, chat_id, game, participant, ping_id))
     con.commit()
 
 
-def get_user_games(cur: sqlite3.Cursor, event):
+def get_user_games(cur: sqlite3.Cursor, event) -> List:
+    """Gets user games from database and format it friendly way"""
     return [x[0] for x in
             cur.execute("SELECT DISTINCT game FROM users WHERE userid == ?", (event.sender_id,)).fetchall()]
 
 
-def chat_games(cur: sqlite3.Cursor, event):
+def chat_games(cur: sqlite3.Cursor, event) -> List:
+    """Gets chat games from database and format it friendly way"""
     return [x[0] for x in cur.execute("SELECT DISTINCT game FROM users WHERE chatid == ?", (event.chat.id,)).fetchall()]
 
 
-def get_game_users(cur: sqlite3.Cursor, event):
+def get_game_users(cur: sqlite3.Cursor, event) -> List:
+    """Gets game users from database and format it friendly way"""
     return [x[0] for x in cur.execute("SELECT userid FROM users WHERE chatid == ? AND game == ? AND userid != ?",
                                       (event.chat.id, event.text.split(' ', 1)[1], event.message.sender.id)).fetchall()]
 
 
-async def get_lobby(cur: sqlite3.Cursor, event) -> Dict:
+async def get_lobby(cur: sqlite3.Cursor, event) -> List[Dict]:
+    """Gets lobby from database and format it friendly way"""
     try:
         lobby_msg = await event.get_message()
-        lobby = cur.execute("SELECT lobbyid, ownerid, chatid, game, participant, ping FROM lobbies WHERE lobbyid == ? and chatid == ?",
-                            (lobby_msg.id, event.chat.id,)).fetchall()
+        lobby = cur.execute(
+            "SELECT lobbyid, ownerid, chatid, game, participant, ping FROM lobbies WHERE lobbyid == ? and chatid == ?",
+            (lobby_msg.id, event.chat.id,)).fetchall()
         keys = [x[0] for x in cur.description]
 
         return [{keys[0]: user[0],
-                keys[1]: user[1],
-                keys[2]: user[2],
-                keys[3]: user[3],
-                keys[4]: user[4],
-                keys[5]: user[5]} for user in lobby]
-
-        # return {'lobbyid': lobby[0],
-        #         'ownerid': lobby[1],
-        #         'chatid': lobby[2],
-        #         'game': lobby[3],
-        #         'participants': lobby[4],
-        #         'pings': lobby[5]}
+                 keys[1]: user[1],
+                 keys[2]: user[2],
+                 keys[3]: user[3],
+                 keys[4]: user[4],
+                 keys[5]: user[5]} for user in lobby] if lobby else [{'error': 'lobby does not exist in database'}]
 
     except TypeError:
         raise Exception('Wrong lobby id!')
@@ -230,21 +233,21 @@ async def main(config):
 
     @client.on(events.CallbackQuery(pattern=b'Unsubscribe'))
     async def unsubscribe_button(event):
-        # replied_to = await event.get_message()
-        # print(replied_to)
-        # if 'Game:' in replied_to.text:
-        # 	game = replied_to.text.split('\n')[1]  # get "Game" line, then extract only game name.
-        # 	game = game.split(':', 1)[1].strip(' ')
-        # 	if game in [x[0] for x in cur.execute("SELECT DISTINCT game FROM users WHERE userid == ?",
-        # 										  (event.sender_id,)).fetchall()]:
-        # 		cur.execute("DELETE FROM users WHERE (userid, chatid, game) == (?, ?, ?)", (
-        # 			event.sender_id, event.chat.id, game))
-        # 		con.commit()
-        # 		await event.respond(
-        # 			f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just unsubscribed '{game}'!")
-        # 	else:
-        # 		await event.answer(f"{game} was not in your library", alert=True)
-        await event.answer('To be implemented', alert=True)
+        replied_to = await event.get_message()
+        print(replied_to)
+        if 'Game:' in replied_to.text:
+            game = replied_to.text.split('\n')[1]  # get "Game" line, then extract only game name.
+            game = game.split(':', 1)[1].strip(' ')
+            if game in [x[0] for x in cur.execute("SELECT DISTINCT game FROM users WHERE userid == ?",
+                                                  (event.sender_id,)).fetchall()]:
+                cur.execute("DELETE FROM users WHERE (userid, chatid, game) == (?, ?, ?)", (
+                    event.sender_id, event.chat.id, game))
+                con.commit()
+                await event.respond(
+                    f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just unsubscribed '{game}'!")
+            else:
+                await event.answer(f"{game} was not in your library", alert=True)
+        # await event.answer('To be implemented', alert=True)
 
     @client.on(events.CallbackQuery(pattern=b'Join'))
     async def join_button(event):
