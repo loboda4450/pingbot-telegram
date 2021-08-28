@@ -54,13 +54,13 @@ def subscribe_db(_con: sqlite3.Connection, _cur: sqlite3.Cursor, _userid: int, _
 
 
 def add_lobby_to_db(con: sqlite3.Connection, cur: sqlite3.Cursor, lobby_id: int, owner_id: int, chat_id: int, game: str,
-                    ping_ids: str, ping_users: str):
-
+                    participant: int, ping_id: int) -> None:
     cur.execute("INSERT INTO lobbies(lobbyid, ownerid, chatid, game, participant, ping) VALUES (?,?,?,?,?,?)",
-                (lobby_id, owner_id, chat_id, game, ping_users, ping_ids))
+                (lobby_id, owner_id, chat_id, game, participant, ping_id))
     con.commit()
 
-def user_games(cur: sqlite3.Cursor, event):
+
+def get_user_games(cur: sqlite3.Cursor, event):
     return [x[0] for x in
             cur.execute("SELECT DISTINCT game FROM users WHERE userid == ?", (event.sender_id,)).fetchall()]
 
@@ -69,7 +69,7 @@ def chat_games(cur: sqlite3.Cursor, event):
     return [x[0] for x in cur.execute("SELECT DISTINCT game FROM users WHERE chatid == ?", (event.chat.id,)).fetchall()]
 
 
-def game_users(cur: sqlite3.Cursor, event):
+def get_game_users(cur: sqlite3.Cursor, event):
     return [x[0] for x in cur.execute("SELECT userid FROM users WHERE chatid == ? AND game == ? AND userid != ?",
                                       (event.chat.id, event.text.split(' ', 1)[1], event.message.sender.id)).fetchall()]
 
@@ -159,15 +159,14 @@ async def main(config):
 
     @client.on(events.InlineQuery(pattern=''))
     async def ping_inline(event):
-        print(event)
-        games = user_games(cur, event)
+        games = get_user_games(cur, event)
         await event.answer(
             [event.builder.article(f'{g}', text=f'/announce {g}') for g in games])
 
     @client.on(events.NewMessage(pattern='/announce'))
     async def ping_guys(event):
         game = event.text.split(' ', 1)[1]
-        users = game_users(cur, event)
+        game_users = get_game_users(cur, event)
         chat_users = dict(await get_chat_users(client, event, details='uid'))
 
         lobby = await event.reply(
@@ -176,31 +175,31 @@ async def main(config):
             buttons=[[Button.inline('Ping')], [Button.inline('Join'), Button.inline('Leave')],
                      [Button.inline('Subscribe'), Button.inline('Unsubscribe')]])
 
-        # pings = dict()
-        # for id in users:
-        #     if id in chat_users:
-        #         pings['id'] = list()
+        if game_users and chat_users:
+            for chunk in [game_users[x: x + 5] for x in range(0, len(game_users), 5)]:
+                if lobby_chunk := ", ".join(
+                        f"[{chat_users[id_]}](tg://user?id={id_})" for id_ in chunk if id_ in chat_users):
+                    ping = await lobby.reply(lobby_chunk)
+                    for user in chunk:
+                        if user in chat_users:
+                            add_lobby_to_db(con=con,
+                                            cur=cur,
+                                            lobby_id=lobby.id,
+                                            owner_id=event.sender.id,
+                                            chat_id=event.chat.id,
+                                            game=game,
+                                            participant=user,
+                                            ping_id=ping.id)
 
-        # if users:
-        #     chunks = [users[x: x + 5] for x in range(0, len(users), 5)]
-        #     for chunk in chunks:
-        #         lobby_chunk = ", ".join(
-        #             f"[{chat_users[id_]}](tg://user?id={id_})" for id_ in chunk if id_ in chat_users)
-        #         if lobby_chunk:
-        #             ping = await lobby.reply(lobby_chunk)
-        #             ping_ids.append(ping.id)
-        #
-        # add_lobby_to_db(con, cur, lobby.id, event.sender.id, event.chat.id, game, ping_ids, ping_users)
-
-    @client.on(events.NewMessage(pattern='/start'))
-    async def start(event):
-        # # dialogs = await client.get_dialogs()
-        # participants = await client.get_participants(event.input_chat.channel_id)
-        # for u in participants:
-        # 	if not u.is_self and not u.bot:
-        # 		print(get_sender_name(u))
-        users = await get_chat_users(client, event)
-        await event.reply('Daaaavson?')
+    # @client.on(events.NewMessage(pattern='/start'))
+    # async def start(event):
+    #     # # dialogs = await client.get_dialogs()
+    #     # participants = await client.get_participants(event.input_chat.channel_id)
+    #     # for u in participants:
+    #     # 	if not u.is_self and not u.bot:
+    #     # 		print(get_sender_name(u))
+    #     users = await get_chat_users(client, event)
+    #     await event.reply('Daaaavson?')
 
     @client.on(events.CallbackQuery(pattern=b'Subscribe'))
     async def subscribe_button(event):
@@ -209,7 +208,7 @@ async def main(config):
         if 'Game:' in replied_to.text:
             game = replied_to.text.split('\n')[1]  # get "Game" line, then extract only game name.
             game = game.split(':', 1)[1].strip(' ')
-            if game not in user_games(cur, event):
+            if game not in get_user_games(cur, event):
                 cur.execute("INSERT INTO users(userid, chatid, game) VALUES (?, ?, ?)",
                             (event.sender_id, event.chat.id, game))
                 con.commit()
