@@ -11,73 +11,8 @@ import yaml
 from telethon.tl.types import User
 from utils.lobby import add_lobby_to_db, get_lobby, is_in_lobby, change_lobby_participants, is_lobby_empty, \
     remove_lobby_from_db
-
-HELP1 = 'Commands:\n' \
-        '/subscribe <game>: Get notified about newly created lobbies\n' \
-        '/enroll: reply to existing lobby to subscribe game\n' \
-        '/join: reply to a existing lobby to join it\n' \
-        '/ping: Type it in inline mode to get list of your games and to create a lobby\n' \
-        '/announce <game>: Manually create a lobby'
-
-
-def escape_markdown(text: str) -> str:
-    """Escape markdown to prevent markdown injection XDD"""
-    parse = re.sub(r"([_*\[\]()~`>\#\+\-=|\.!])", r"\\\1", text)
-    reparse = re.sub(r"\\\\([_*\[\]()~`>\#\+\-=|\.!])", r"\1", parse)
-    return reparse
-
-
-def get_sender_name(sender: User) -> str:  # fuck @divadsn
-    """Returns the sender's username or full name if there is no username"""
-    if sender.username:
-        return "" + sender.username
-    elif sender.first_name and sender.last_name:
-        return "{} {}".format(sender.first_name, sender.last_name)
-    elif sender.first_name:
-        return sender.first_name
-    elif sender.last_name:
-        return sender.last_name
-    else:
-        return "PersonWithNoName"
-
-
-def subscribe_db(_con: sqlite3.Connection, _cur: sqlite3.Cursor, _userid: int, _chatid: int, _game: str) -> None:
-    """Adds a game subscriber to database"""
-    _cur.execute("INSERT INTO users(userid, chatid, game) VALUES (?, ?, ?)", (
-        _userid, _chatid, _game,))
-    _con.commit()
-
-
-def get_user_games(cur: sqlite3.Cursor, event) -> List:
-    """Gets user games from database and format it friendly way"""
-    return [x[0] for x in
-            cur.execute("SELECT DISTINCT game FROM users WHERE userid == ?", (event.sender_id,)).fetchall()]
-
-
-def chat_games(cur: sqlite3.Cursor, event) -> List:
-    """Gets chat games from database and format it friendly way"""
-    return [x[0] for x in cur.execute("SELECT DISTINCT game FROM users WHERE chatid == ?", (event.chat.id,)).fetchall()]
-
-
-def get_game_users(cur: sqlite3.Cursor, event) -> List:
-    """Gets game users other than event requester from database and format it friendly way"""
-    return [x[0] for x in cur.execute("SELECT userid FROM users WHERE chatid == ? AND game == ? AND userid != ?",
-                                      (event.chat.id, event.text.split(' ', 1)[1], event.sender.id)).fetchall()]
-
-
-async def get_chat_users(client: telethon.client.TelegramClient, event, details='all') -> List:
-    """Returns chat users other than sender and bots"""
-    participants = await client.get_participants(event.chat.id)
-    if details == 'all':
-        return [user for user in participants if not user.is_self and not user.bot and user.id != event.sender.id]
-    elif details == 'id':
-        return [user.id for user in participants if not user.is_self and not user.bot and user.id != event.sender.id]
-    elif details == 'username':
-        return [get_sender_name(user) for user in participants if
-                not user.is_self and not user.bot and user.id != event.sender.id]
-    elif details == 'uid':
-        return [(user.id, get_sender_name(user)) for user in participants if
-                not user.is_self and not user.bot and user.id != event.sender.id]
+from utils.database import add_game_subscriber, get_user_games, get_chat_games, get_game_users
+from utils.aux import HELP1, escape_markdown, get_sender_name, get_chat_users
 
 
 async def main(config):
@@ -116,7 +51,7 @@ async def main(config):
         # TODO: Create handler for subscribing, might use that also in button
         if not event.is_reply:
             game = event.text.split(" ", 1)[1]
-            subscribe_db(con, cur, event.message.from_id.user_id, event.chat.id, game)
+            add_game_subscriber(con, cur, event.message.from_id.user_id, event.chat.id, game)
 
             await event.reply(
                 f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just subscribed to '{game}'!")
@@ -125,7 +60,7 @@ async def main(config):
             if 'Game:' in replied_to.text:
                 game = replied_to.text.split('\n')[1]  # get "Game" line, then extract only game name.
                 game = game.split(':', 1)[1].strip(' ')
-                subscribe_db(con, cur, event.message.from_id.user_id, event.chat.id, game)
+                add_game_subscriber(con, cur, event.message.from_id.user_id, event.chat.id, game)
 
                 await event.reply(f"You've just subscribed to '{game}'!")
             else:
