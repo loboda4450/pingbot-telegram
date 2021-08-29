@@ -15,9 +15,15 @@ def add_lobby_to_db(con: Connection, cur: Cursor, lobby_id: int, owner_id: int, 
     con.commit()
 
 
-def remove_lobby_from_db(con: Connection, cur: Cursor, lobby_id: int, chat_id):
+def remove_lobby_from_db(con: Connection, cur: Cursor, lobby_id: int, chat_id: int):
     cur.execute("""DELETE FROM lobbies WHERE lobbyid == ? AND chatid == ?""", (lobby_id, chat_id,))
     con.commit()
+
+
+def lobby_exists(cur: Cursor, lobby_id: int, chat_id: int) -> bool:
+    return cur.execute("""SELECT COUNT(*) FROM lobbies 
+                          WHERE lobbyid == ? AND chatid == ?""",
+                       (lobby_id, chat_id,)).fetchone()[0] > 0
 
 
 async def get_lobby(cur: Cursor, event: CallbackQuery) -> List[Dict]:
@@ -36,8 +42,7 @@ async def get_lobby(cur: Cursor, event: CallbackQuery) -> List[Dict]:
              keys[6]: user[6]} for user in lobby] if lobby else [{'error': 'lobby does not exist in database'}]
 
 
-async def get_lobby_participants(cur: Cursor, event: CallbackQuery, in_lobby: bool) -> List[
-    Dict]:
+async def get_lobby_participants(cur: Cursor, event: CallbackQuery, in_lobby: bool) -> List[Dict]:
     """Gets only in lobby participants from database and format it friendly way"""
     lobby_msg = await event.get_message()
     lobby = cur.execute("SELECT lobbyid, ownerid, chatid, game, participant, ping, in_lobby "
@@ -56,10 +61,20 @@ def get_lobby_game(cur: Cursor, event: CallbackQuery) -> str:
     ...
 
 
+async def get_lobby_ids(cur: Cursor, event: CallbackQuery) -> List[int]:
+    lobby_msg = await event.get_message()
+
+    return [id[0] for id in cur.execute("SELECT DISTINCT ping FROM lobbies WHERE lobbyid == ? AND chatid == ?",
+                                        (lobby_msg.id, event.chat.id,)).fetchall()]
+
+
 async def get_lobby_owner(cur: Cursor, event: CallbackQuery) -> int:
     lobby_msg = await event.get_message()
-    return cur.execute("SELECT ownerid FROM lobbies WHERE lobbyid == ? AND chatid == ? AND ownerid == participant",
-                       (lobby_msg.id, event.chat.id,)).fetchone()[0]
+    if lobby_exists(cur=cur, lobby_id=lobby_msg.id, chat_id=event.chat.id):
+        return cur.execute("SELECT ownerid FROM lobbies WHERE lobbyid == ? AND chatid == ? AND ownerid == participant",
+                           (lobby_msg.id, event.chat.id,)).fetchone()[0]
+    else:
+        raise Exception('Lobby does not exist!')
 
 
 def is_in_lobby(userid: int, lobby: List) -> bool:

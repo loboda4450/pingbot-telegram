@@ -11,7 +11,7 @@ from telethon.errors import MessageNotModifiedError
 
 
 from utils.lobby import add_lobby_to_db, get_lobby, is_in_lobby, change_lobby_participants, is_lobby_empty, \
-    remove_lobby_from_db, parse_lobby, get_lobby_participants, get_lobby_owner
+    remove_lobby_from_db, parse_lobby, get_lobby_participants, get_lobby_owner, get_lobby_ids
 from utils.database import add_game_subscriber, get_user_games, get_chat_games, get_game_users
 from utils.chat_aux import HELP1, escape_markdown, get_sender_name, get_chat_users
 
@@ -103,8 +103,7 @@ async def main(config):
                             in_lobby=True)
 
             for chunk in [game_users[x: x + 5] for x in range(0, len(game_users), 5)]:
-                if lobby_chunk := ", ".join(
-                        f"[{chat_users[id_]}](tg://user?id={id_})" for id_ in chunk):
+                if lobby_chunk := ", ".join(f"[{chat_users[id_]}](tg://user?id={id_})" for id_ in chunk):
                     ping = await lobby.reply(lobby_chunk)
                     for user in chunk:
                         if user in chat_users:
@@ -177,12 +176,6 @@ async def main(config):
         else:
             await event.answer("You're already in the lobby")
 
-        # 	else:
-        # 		await event.answer("You're already in the lobby")
-        # else:
-        # 	await event.answer(HELP1, alert=True)
-        # await event.answer('To be reimplemented', alert=True)
-
     @client.on(CallbackQuery(pattern=b'Leave'))
     async def leave_button(event):
         lobby_msg = await event.get_message()
@@ -191,8 +184,8 @@ async def main(config):
             change_lobby_participants(con=con, cur=cur, userid=event.sender.id, lobbyid=lobby_msg.id, joined=False)
             lobby = await get_lobby(cur=cur, event=event)
             if is_lobby_empty(lobby=lobby):
+                await client.delete_messages(event.chat.id, await get_lobby_ids(cur=cur, event=event))
                 remove_lobby_from_db(con=con, cur=cur, lobby_id=lobby_msg.id, chat_id=lobby_msg.chat.id)
-                # TODO: Remove lobby and ping messages (dunno if shoulda do it here or make aux. function).
             else:
                 # TODO: Remove the outgoing user from lobby message
                 ...
@@ -206,15 +199,16 @@ async def main(config):
         # users = game_users(cur, event)
         chat_users = dict(await get_chat_users(client=client, event=event, details='uid', with_sender=True))
         try:
-            lobby = await get_lobby(cur, event)
-            lobby2 = await get_lobby_participants(cur, event, True)
-            lobby3 = await get_lobby_participants(cur, event, False)
+            # lobby = await get_lobby(cur, event)
+            # lobby2 = await get_lobby_participants(cur, event, True)
+            # lobby3 = await get_lobby_participants(cur, event, False)
             owner = await get_lobby_owner(cur=cur, event=event)
-            print(lobby)
+            # print(lobby)
+
             await event.reply(f'Lobby owner: [{chat_users[owner]}](tg://user?id={owner})')
-            await event.reply(f'All\n```{dumps(lobby)}```')
-            await event.reply(f'Joined\n```{dumps(lobby2)}```')
-            await event.reply(f'Waiting\n```{dumps(lobby3)}```')
+            # await event.reply(f'All\n```{dumps(lobby)}```')
+            # await event.reply(f'Joined\n```{dumps(lobby2)}```')
+            # await event.reply(f'Waiting\n```{dumps(lobby3)}```')
 
             # for msg in lobby['pings'].split(','):
             #     if msg:
