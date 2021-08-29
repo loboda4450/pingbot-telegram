@@ -50,9 +50,7 @@ def change_lobby_participants(con: sqlite3.Connection, cur: sqlite3.Cursor, user
 
 
 def is_lobby_empty(lobby: List) -> bool:
-    """Checks if lobby is empty
-    TODO: Rework with database, will work after future code edits but also will make no sense
-    """
+    """Checks if lobby is empty"""
     return not any((user['in_lobby'] for user in lobby))
 
 
