@@ -9,6 +9,7 @@ import telethon.client
 from telethon import TelegramClient, events, Button
 import yaml
 from telethon.tl.types import User
+from utils.lobby import add_lobby_to_db, get_lobby, is_in_lobby, leave_lobby,join_lobby, change_lobby_participants, is_lobby_empty
 
 HELP1 = 'Commands:\n' \
         '/subscribe <game>: Get notified about newly created lobbies\n' \
@@ -39,31 +40,11 @@ def get_sender_name(sender: User) -> str:  # fuck @divadsn
         return "PersonWithNoName"
 
 
-def is_empty(lobby: str) -> bool:
-    """Checks if lobby is empty
-    TODO: Rework with database, will work after future code edits but also will make no sense
-    """
-    return len(lobby.split(':', 1)[1]) == 0
-
-
-def parse_lobby(event) -> List:
-    ...
-
-
 def subscribe_db(_con: sqlite3.Connection, _cur: sqlite3.Cursor, _userid: int, _chatid: int, _game: str) -> None:
     """Adds a game subscriber to database"""
     _cur.execute("INSERT INTO users(userid, chatid, game) VALUES (?, ?, ?)", (
         _userid, _chatid, _game,))
     _con.commit()
-
-
-def add_lobby_to_db(con: sqlite3.Connection, cur: sqlite3.Cursor, lobby_id: int, owner_id: int, chat_id: int, game: str,
-                    participant: int, ping_id: int, in_lobby: bool) -> None:
-    """Adds every pinged user from lobby to database"""
-    cur.execute(
-        "INSERT INTO lobbies(lobbyid, ownerid, chatid, game, participant, ping, in_lobby) VALUES (?,?,?,?,?,?,?)",
-        (lobby_id, owner_id, chat_id, game, participant, ping_id, in_lobby))
-    con.commit()
 
 
 def get_user_games(cur: sqlite3.Cursor, event) -> List:
@@ -81,27 +62,6 @@ def get_game_users(cur: sqlite3.Cursor, event) -> List:
     """Gets game users other than event requester from database and format it friendly way"""
     return [x[0] for x in cur.execute("SELECT userid FROM users WHERE chatid == ? AND game == ? AND userid != ?",
                                       (event.chat.id, event.text.split(' ', 1)[1], event.sender.id)).fetchall()]
-
-
-async def get_lobby(cur: sqlite3.Cursor, event) -> List[Dict]:
-    """Gets lobby from database and format it friendly way"""
-    try:
-        lobby_msg = await event.get_message()
-        lobby = cur.execute(
-            "SELECT lobbyid, ownerid, chatid, game, participant, ping, in_lobby FROM lobbies WHERE lobbyid == ? and chatid == ?",
-            (lobby_msg.id, event.chat.id,)).fetchall()
-        keys = [x[0] for x in cur.description]
-
-        return [{keys[0]: user[0],
-                 keys[1]: user[1],
-                 keys[2]: user[2],
-                 keys[3]: user[3],
-                 keys[4]: user[4],
-                 keys[5]: user[5],
-                 keys[6]: user[6]} for user in lobby] if lobby else [{'error': 'lobby does not exist in database'}]
-
-    except TypeError:
-        raise Exception('Wrong lobby id!')
 
 
 async def get_chat_users(client: telethon.client.TelegramClient, event, details='all') -> List:
@@ -268,6 +228,12 @@ async def main(config):
     @client.on(events.CallbackQuery(pattern=b'Join'))
     async def join_button(event):
         # TODO: Reimplement
+        lobby_msg = await event.get_message()
+        lobby = await get_lobby(cur=cur, event=event)
+        if not is_in_lobby(userid=event.sender.id, lobby=lobby):
+            change_lobby_participants(con=con, cur=cur, userid=event.sender.id, lobbyid=lobby_msg.id, joined=True)
+            ...
+
         # replied_to = await event.get_message()
         # t = replied_to.text
         # if 'Lobby' in t and 'Game' in t:
@@ -281,29 +247,52 @@ async def main(config):
         # 		await event.answer("You're already in the lobby")
         # else:
         # 	await event.answer(HELP1, alert=True)
-        await event.answer('To be reimplemented', alert=True)
+        # await event.answer('To be reimplemented', alert=True)
 
     @client.on(events.CallbackQuery(pattern=b'Leave'))
     async def leave_button(event):
         # TODO: Reimplement
+        lobby_msg = await event.get_message()
+        lobby = await get_lobby(cur=cur, event=event)
+        if is_in_lobby(userid=event.sender.id, lobby=lobby):
+            change_lobby_participants(con=con, cur=cur, userid=event.sender.id, lobbyid=lobby_msg.id, joined=False)
+            ...
+
+        # if 'Lobby' in t and 'Game' in t:
+        #     if str(event.sender.id) in t:
+        #         t = t.split('\n')
+        #         stripped = t[0].replace(f'[{get_sender_name(event.sender)}](tg://user?id={event.sender_id})', '')
+        #
+        #         if is_empty(stripped.strip()):
+        #             await replied_to.delete()
+        #         else:
+        #             await replied_to.edit(f'{stripped}\n{t[1]}')
+        #             await replied_to.reply(
+        #                 f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just left this lobby!")
+        #     else:
+        #         await event.answer("You were not in the lobby")
+        # else:
+        #     await event.answer(HELP1, alert=True)
+        # await event.answer('To be reimplemented', alert=True)
+        
         # replied_to = await event.get_message()
         # t = replied_to.text
         # if 'Lobby' in t and 'Game' in t:
-        # 	if str(event.sender.id) in t:
-        # 		t = t.split('\n')
-        # 		stripped = t[0].replace(f'[{get_sender_name(event.sender)}](tg://user?id={event.sender_id})', '')
+        #     if str(event.sender.id) in t:
+        #         t = t.split('\n')
+        #         stripped = t[0].replace(f'[{get_sender_name(event.sender)}](tg://user?id={event.sender_id})', '')
         #
-        # 		if is_empty(stripped.strip()):
-        # 			await replied_to.delete()
-        # 		else:
-        # 			await replied_to.edit(f'{stripped}\n{t[1]}')
-        # 			await replied_to.reply(
-        # 				f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just left this lobby!")
-        # 	else:
-        # 		await event.answer("You were not in the lobby")
+        #         if is_empty(stripped.strip()):
+        #             await replied_to.delete()
+        #         else:
+        #             await replied_to.edit(f'{stripped}\n{t[1]}')
+        #             await replied_to.reply(
+        #                 f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just left this lobby!")
+        #     else:
+        #         await event.answer("You were not in the lobby")
         # else:
-        # 	await event.answer(HELP1, alert=True)
-        await event.answer('To be reimplemented', alert=True)
+        #     await event.answer(HELP1, alert=True)
+        # await event.answer('To be reimplemented', alert=True)
 
     @client.on(events.CallbackQuery(pattern=b'Ping'))
     async def ping_button(event):
