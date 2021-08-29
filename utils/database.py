@@ -2,11 +2,15 @@ import sqlite3
 from typing import List
 
 
-def add_game_subscriber(_con: sqlite3.Connection, _cur: sqlite3.Cursor, _userid: int, _chatid: int, _game: str) -> None:
+def add_game_subscriber(con: sqlite3.Connection, cur: sqlite3.Cursor, userid: int, chatid: int, game: str) -> None:
     """Adds a game subscriber to database"""
-    _cur.execute("INSERT INTO users(userid, chatid, game) VALUES (?, ?, ?)", (
-        _userid, _chatid, _game,))
-    _con.commit()
+    cur.execute("INSERT INTO users(userid, chatid, game) VALUES (?, ?, ?)", (userid, chatid, game,))
+    con.commit()
+
+
+def remove_game_subscriber(con: sqlite3.Connection, cur: sqlite3.Cursor, userid: int, chatid: int, game: str) -> None:
+    cur.execute("DELETE FROM users WHERE userid == ? AND chatid == ? AND game == ?", (userid, chatid, game,))
+    con.commit()
 
 
 def get_user_games(cur: sqlite3.Cursor, event) -> List:

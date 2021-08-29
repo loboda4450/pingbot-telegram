@@ -10,9 +10,9 @@ from telethon import TelegramClient, events, Button
 import yaml
 from telethon.tl.types import User
 from utils.lobby import add_lobby_to_db, get_lobby, is_in_lobby, change_lobby_participants, is_lobby_empty, \
-    remove_lobby_from_db
+    remove_lobby_from_db, parse_lobby, get_lobby_participants, get_lobby_owner
 from utils.database import add_game_subscriber, get_user_games, get_chat_games, get_game_users
-from utils.aux import HELP1, escape_markdown, get_sender_name, get_chat_users
+from utils.chat_aux import HELP1, escape_markdown, get_sender_name, get_chat_users
 
 
 async def main(config):
@@ -170,20 +170,12 @@ async def main(config):
         lobby = await get_lobby(cur=cur, event=event)
         if not is_in_lobby(userid=event.sender.id, lobby=lobby):
             change_lobby_participants(con=con, cur=cur, userid=event.sender.id, lobbyid=lobby_msg.id, joined=True)
+            x = await parse_lobby(cur=cur, event=event)
             # TODO: Add the newly joined user to lobby message
             ...
         else:
             await event.answer("You're already in the lobby")
 
-        # replied_to = await event.get_message()
-        # t = replied_to.text
-        # if 'Lobby' in t and 'Game' in t:
-        # 	if str(event.sender.id) not in t:
-        # 		t = t.split('\n')
-        # 		await replied_to.edit(
-        # 			f'{t[0]} [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})\n{t[1]}')
-        # 		await replied_to.reply(
-        # 			f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just joined this lobby!")
         # 	else:
         # 		await event.answer("You're already in the lobby")
         # else:
@@ -211,11 +203,17 @@ async def main(config):
     async def ping_button(event):
         # TODO: Finish implementing, now its good for debugging process
         # users = game_users(cur, event)
-        # chat_users = dict(await get_chat_users(client, event, details='uid'))
+        chat_users = dict(await get_chat_users(client, event, details='uid', with_sender=True))
         try:
             lobby = await get_lobby(cur, event)
+            lobby2 = await get_lobby_participants(cur, event, True)
+            lobby3 = await get_lobby_participants(cur, event, False)
+            owner  = await get_lobby_owner(cur=cur, event=event)
             print(lobby)
-            await event.reply(f'```{dumps(lobby)}```')
+            await event.reply(f'Lobby owner: [{chat_users[owner]}](tg://user?id={owner})')
+            # await event.reply(f'```{dumps(lobby)}```')
+            # await event.reply(f'```{dumps(lobby2)}```')
+            # await event.reply(f'```{dumps(lobby3)}```')
 
             # for msg in lobby['pings'].split(','):
             #     if msg:

@@ -1,5 +1,5 @@
 from re import sub
-from typing import List
+from typing import List, Generator
 
 from telethon.tl.types import User
 from telethon.client import TelegramClient
@@ -10,6 +10,7 @@ HELP1 = 'Commands:\n' \
         '/join: reply to a existing lobby to join it\n' \
         '/ping: Type it in inline mode to get list of your games and to create a lobby\n' \
         '/announce <game>: Manually create a lobby'
+
 
 def escape_markdown(text: str) -> str:
     """Escape markdown to prevent markdown injection XDD"""
@@ -32,16 +33,34 @@ def get_sender_name(sender: User) -> str:  # fuck @divadsn
         return "PersonWithNoName"
 
 
-async def get_chat_users(client: TelegramClient, event, details='all') -> List:
+async def get_chat_users(client: TelegramClient, event, details='all', with_sender=False) -> Generator:
     """Returns chat users other than sender and bots"""
     participants = await client.get_participants(event.chat.id)
-    if details == 'all':
-        return [user for user in participants if not user.is_self and not user.bot and user.id != event.sender.id]
-    elif details == 'id':
-        return [user.id for user in participants if not user.is_self and not user.bot and user.id != event.sender.id]
+
+    if details == 'id':
+        v = (user.id for user in participants if not user.is_self and not user.bot)
     elif details == 'username':
-        return [get_sender_name(user) for user in participants if
-                not user.is_self and not user.bot and user.id != event.sender.id]
+        v = (get_sender_name(user) for user in participants if
+             not user.is_self and not user.bot)
     elif details == 'uid':
-        return [(user.id, get_sender_name(user)) for user in participants if
-                not user.is_self and not user.bot and user.id != event.sender.id]
+        v = ((user.id, get_sender_name(user)) for user in participants if
+             not user.is_self and not user.bot)
+    else:
+        return (user for user in participants if not user.is_self and not user.bot)
+
+    if not with_sender:
+        return (user for user in v if user.id == event.sender.id)
+    else:
+        return v
+
+
+def get_subscribe_message():
+    # TODO: Code it.
+    print('Calm down, will code it soon..')
+    ...
+
+
+def set_ping_messages():
+    # TODO: Code it.
+    print('Calm down, will code it soon..')
+    ...
