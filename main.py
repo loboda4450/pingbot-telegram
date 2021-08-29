@@ -113,6 +113,7 @@ async def main(config):
 
     @client.on(events.NewMessage(pattern='/subscribe'))
     async def subscribe(event):
+        # TODO: Create handler for subscribing, might use that also in button
         if not event.is_reply:
             game = event.text.split(" ", 1)[1]
             subscribe_db(con, cur, event.message.from_id.user_id, event.chat.id, game)
@@ -142,6 +143,7 @@ async def main(config):
 
     @client.on(events.NewMessage(pattern='/announce'))
     async def announce(event):
+        # TODO: Rethink aux. function for lobby creation, could use that l8er
         game = event.text.split(' ', 1)[1]
         game_users = get_game_users(cur, event)
         chat_users = dict(await get_chat_users(client=client, event=event, details='uid'))
@@ -192,6 +194,7 @@ async def main(config):
 
     @client.on(events.CallbackQuery(pattern=b'Subscribe'))
     async def subscribe_button(event):
+        # TODO: Rethink that database access there, use aux. functions.
         replied_to = await event.get_message()
         print(replied_to)
         if 'Game:' in replied_to.text:
@@ -209,7 +212,7 @@ async def main(config):
 
     @client.on(events.CallbackQuery(pattern=b'Unsubscribe'))
     async def unsubscribe_button(event):
-        # TODO: Rethink that database access there
+        # TODO: Rethink that database access there, use aux. functions.
         replied_to = await event.get_message()
         print(replied_to)
         if 'Game:' in replied_to.text:
@@ -228,12 +231,14 @@ async def main(config):
 
     @client.on(events.CallbackQuery(pattern=b'Join'))
     async def join_button(event):
-        # TODO: Reimplement
         lobby_msg = await event.get_message()
         lobby = await get_lobby(cur=cur, event=event)
         if not is_in_lobby(userid=event.sender.id, lobby=lobby):
             change_lobby_participants(con=con, cur=cur, userid=event.sender.id, lobbyid=lobby_msg.id, joined=True)
+            # TODO: Add the newly joined user to lobby message
             ...
+        else:
+            await event.answer("You're already in the lobby")
 
         # replied_to = await event.get_message()
         # t = replied_to.text
@@ -252,7 +257,6 @@ async def main(config):
 
     @client.on(events.CallbackQuery(pattern=b'Leave'))
     async def leave_button(event):
-        # TODO: Reimplement
         lobby_msg = await event.get_message()
         lobby = await get_lobby(cur=cur, event=event)
         if is_in_lobby(userid=event.sender.id, lobby=lobby):
@@ -260,46 +264,17 @@ async def main(config):
             lobby = await get_lobby(cur=cur, event=event)
             if is_lobby_empty(lobby=lobby):
                 remove_lobby_from_db(con=con, cur=cur, lobby_id=lobby_msg.id, chat_id=lobby_msg.chat.id)
+                # TODO: Remove lobby and ping messages (dunno if shoulda do it here or make aux. function).
+            else:
+                # TODO: Remove the outgoing user from lobby message
+                ...
 
-        # if 'Lobby' in t and 'Game' in t:
-        #     if str(event.sender.id) in t:
-        #         t = t.split('\n')
-        #         stripped = t[0].replace(f'[{get_sender_name(event.sender)}](tg://user?id={event.sender_id})', '')
-        #
-        #         if is_empty(stripped.strip()):
-        #             await replied_to.delete()
-        #         else:
-        #             await replied_to.edit(f'{stripped}\n{t[1]}')
-        #             await replied_to.reply(
-        #                 f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just left this lobby!")
-        #     else:
-        #         await event.answer("You were not in the lobby")
-        # else:
-        #     await event.answer(HELP1, alert=True)
-        # await event.answer('To be reimplemented', alert=True)
-
-        # replied_to = await event.get_message()
-        # t = replied_to.text
-        # if 'Lobby' in t and 'Game' in t:
-        #     if str(event.sender.id) in t:
-        #         t = t.split('\n')
-        #         stripped = t[0].replace(f'[{get_sender_name(event.sender)}](tg://user?id={event.sender_id})', '')
-        #
-        #         if is_empty(stripped.strip()):
-        #             await replied_to.delete()
-        #         else:
-        #             await replied_to.edit(f'{stripped}\n{t[1]}')
-        #             await replied_to.reply(
-        #                 f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just left this lobby!")
-        #     else:
-        #         await event.answer("You were not in the lobby")
-        # else:
-        #     await event.answer(HELP1, alert=True)
-        # await event.answer('To be reimplemented', alert=True)
+        else:
+            await event.answer("You were not in the lobby")
 
     @client.on(events.CallbackQuery(pattern=b'Ping'))
     async def ping_button(event):
-        # TODO: Finish implementing
+        # TODO: Finish implementing, now its good for debugging process
         # users = game_users(cur, event)
         # chat_users = dict(await get_chat_users(client, event, details='uid'))
         try:
