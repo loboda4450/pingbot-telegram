@@ -1,5 +1,5 @@
 from sqlite3 import Connection, Cursor
-from telethon.events import NewMessage
+from telethon.events import NewMessage, CallbackQuery
 from typing import List
 
 
@@ -29,3 +29,8 @@ def get_game_users(cur: Cursor, event: NewMessage) -> List:
     """Gets game users other than event requester from database and format it friendly way"""
     return [x[0] for x in cur.execute("SELECT userid FROM users WHERE chatid == ? AND game == ? AND userid != ?",
                                       (event.chat.id, event.text.split(' ', 1)[1], event.sender.id)).fetchall()]
+
+
+def user_subscribes(cur: Cursor, event: CallbackQuery, game: str) -> bool:
+    return cur.execute("""SELECT COUNT(*) FROM users WHERE userid == ? AND chatid == ? AND game == ?""",
+                       (event.sender.id, event.chat.id, game,)).fetchone()[0] > 0
