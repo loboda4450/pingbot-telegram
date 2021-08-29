@@ -11,6 +11,11 @@ def add_lobby_to_db(con: sqlite3.Connection, cur: sqlite3.Cursor, lobby_id: int,
     con.commit()
 
 
+def remove_lobby_from_db(con: sqlite3.Connection, cur: sqlite3.Cursor, lobby_id: int, chat_id):
+    cur.execute("""DELETE FROM lobbies WHERE lobbyid == ? AND chatid == ?""", (lobby_id, chat_id,))
+    con.commit()
+
+
 async def get_lobby(cur: sqlite3.Cursor, event) -> List[Dict]:
     """Gets lobby from database and format it friendly way"""
     try:
@@ -37,28 +42,18 @@ def is_in_lobby(userid: int, lobby: List) -> bool:
     return userid in [user['participant'] for user in lobby if user['in_lobby']]
 
 
-def leave_lobby(con: sqlite3.Connection, cur: sqlite3.Cursor, userid: int, lobbyid: int):
-    """Changes in_lobby parameter to True for a specified userid and lobbyid"""
-    cur.execute("""UPDATE lobbies SET in_lobby = ? WHERE participant == ? AND lobbyid == ?""", (False, userid, lobbyid))
-    con.commit()
-
-
-def join_lobby(con: sqlite3.Connection, cur: sqlite3.Cursor, userid: int, lobbyid: int):
-    """Changes in_lobby parameter to False for a specified userid and lobbyid"""
-    cur.execute("""UPDATE lobbies SET in_lobby = ? WHERE participant == ? AND lobbyid == ?""", (True, userid, lobbyid))
-    con.commit()
-
-
 def change_lobby_participants(con: sqlite3.Connection, cur: sqlite3.Cursor, userid: int, lobbyid: int, joined: bool):
-    """Changes in_lobby parameter to False for a specified userid and lobbyid"""
-    cur.execute("""UPDATE lobbies SET in_lobby = ? WHERE participant == ? AND lobbyid == ?""", (joined, userid, lobbyid))
+    """Changes in_lobby parameter to True/False for a specified userid and lobbyid, depends on join/leave"""
+    cur.execute("""UPDATE lobbies SET in_lobby = ? WHERE participant == ? AND lobbyid == ?""",
+                (joined, userid, lobbyid))
     con.commit()
 
-def is_lobby_empty(lobby: str) -> bool:
+
+def is_lobby_empty(lobby: List) -> bool:
     """Checks if lobby is empty
     TODO: Rework with database, will work after future code edits but also will make no sense
     """
-    return len(lobby.split(':', 1)[1]) == 0
+    return not any((user['in_lobby'] for user in lobby))
 
 
 def parse_lobby(event) -> List:

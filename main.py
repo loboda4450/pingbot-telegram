@@ -9,7 +9,8 @@ import telethon.client
 from telethon import TelegramClient, events, Button
 import yaml
 from telethon.tl.types import User
-from utils.lobby import add_lobby_to_db, get_lobby, is_in_lobby, leave_lobby,join_lobby, change_lobby_participants, is_lobby_empty
+from utils.lobby import add_lobby_to_db, get_lobby, is_in_lobby, change_lobby_participants, is_lobby_empty, \
+    remove_lobby_from_db
 
 HELP1 = 'Commands:\n' \
         '/subscribe <game>: Get notified about newly created lobbies\n' \
@@ -256,7 +257,9 @@ async def main(config):
         lobby = await get_lobby(cur=cur, event=event)
         if is_in_lobby(userid=event.sender.id, lobby=lobby):
             change_lobby_participants(con=con, cur=cur, userid=event.sender.id, lobbyid=lobby_msg.id, joined=False)
-            ...
+            lobby = await get_lobby(cur=cur, event=event)
+            if is_lobby_empty(lobby=lobby):
+                remove_lobby_from_db(con=con, cur=cur, lobby_id=lobby_msg.id, chat_id=lobby_msg.chat.id)
 
         # if 'Lobby' in t and 'Game' in t:
         #     if str(event.sender.id) in t:
@@ -274,7 +277,7 @@ async def main(config):
         # else:
         #     await event.answer(HELP1, alert=True)
         # await event.answer('To be reimplemented', alert=True)
-        
+
         # replied_to = await event.get_message()
         # t = replied_to.text
         # if 'Lobby' in t and 'Game' in t:
