@@ -81,7 +81,7 @@ async def main(config):
         # TODO: Rethink aux. function for lobby creation, could use that l8er
         game = event.text.split(' ', 1)[1]
         game_users = get_game_users(cur, event)
-        chat_users = dict(await get_chat_users(client=client, event=event, details='uid'))
+        chat_users = dict(await get_chat_users(client=client, event=event, details='uid', with_sender=False))
 
         if game_users and chat_users:
             lobby = await event.reply(
@@ -203,17 +203,17 @@ async def main(config):
     async def ping_button(event):
         # TODO: Finish implementing, now its good for debugging process
         # users = game_users(cur, event)
-        chat_users = dict(await get_chat_users(client, event, details='uid', with_sender=True))
+        chat_users = dict(await get_chat_users(client=client, event=event, details='uid', with_sender=True))
         try:
             lobby = await get_lobby(cur, event)
             lobby2 = await get_lobby_participants(cur, event, True)
             lobby3 = await get_lobby_participants(cur, event, False)
-            owner  = await get_lobby_owner(cur=cur, event=event)
+            owner = await get_lobby_owner(cur=cur, event=event)
             print(lobby)
             await event.reply(f'Lobby owner: [{chat_users[owner]}](tg://user?id={owner})')
-            # await event.reply(f'```{dumps(lobby)}```')
-            # await event.reply(f'```{dumps(lobby2)}```')
-            # await event.reply(f'```{dumps(lobby3)}```')
+            await event.reply(f'All\n```{dumps(lobby)}```')
+            await event.reply(f'Joined\n```{dumps(lobby2)}```')
+            await event.reply(f'Waiting\n```{dumps(lobby3)}```')
 
             # for msg in lobby['pings'].split(','):
             #     if msg:
