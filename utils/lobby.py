@@ -2,35 +2,35 @@ import sqlite3
 from sqlite3 import Connection, Cursor
 from typing import List, Dict, Tuple
 
-# from telethon.tl.types import
 from telethon.events import CallbackQuery
-from telethon.client import TelegramClient
-from utils.chat_aux import get_sender_name, get_chat_users
+from telethon.tl.custom import Message
 from utils.database import user_subscribes
 
 
-def add_lobby_to_db(con: Connection, cur: Cursor, lobby_id: int, owner_id: int, chat_id: int, game: str,
-                    participant: int, ping_id: int, in_lobby: bool) -> None:
+def add_lobby_to_db(con: Connection, cur: Cursor, event: CallbackQuery.Event, lobby: Message,
+                    ping: Message, game: str, in_lobby: bool) -> None:
     """Adds every pinged user for lobby to database"""
     cur.execute("INSERT INTO lobbies(lobbyid, ownerid, chatid, game, participant, ping, in_lobby) "
-                "VALUES (?,?,?,?,?,?,?)", (lobby_id, owner_id, chat_id, game, participant, ping_id, in_lobby))
+                "VALUES (?,?,?,?,?,?,?)", (lobby.id, event.sender.id, event.chat.id, game, event.sender.id, ping.id, in_lobby))
     con.commit()
 
 
-def remove_lobby_from_db(con: Connection, cur: Cursor, lobby_id: int, chat_id: int):
+async def remove_lobby_from_db(con: Connection, cur: Cursor, event: CallbackQuery.Event):
     """Removes lobby from database and connected entries"""
-    cur.execute("""DELETE FROM lobbies WHERE lobbyid == ? AND chatid == ?""", (lobby_id, chat_id,))
+    lobby_msg = await event.get_message()
+    cur.execute("""DELETE FROM lobbies WHERE lobbyid == ? AND chatid == ?""", (lobby_msg.id, lobby_msg.chat.id,))
     con.commit()
 
 
-def lobby_exists(cur: Cursor, lobby_id: int, chat_id: int) -> bool:
+async def lobby_exists(cur: Cursor, event: CallbackQuery.Event) -> bool:
     """Checks if lobby exist in database"""
+    lobby_msg = await event.get_message()
     return cur.execute("""SELECT COUNT(*) FROM lobbies 
                           WHERE lobbyid == ? AND chatid == ?""",
-                       (lobby_id, chat_id,)).fetchone()[0] > 0
+                       (lobby_msg.id, event.chat.id,)).fetchone()[0] > 0
 
 
-async def get_lobby(cur: Cursor, event: CallbackQuery) -> List[Dict]:
+async def get_lobby(cur: Cursor, event: CallbackQuery.Event) -> List[Dict]:
     """Gets all lobby from database and format it friendly way"""
     lobby_msg = await event.get_message()
     lobby = cur.execute("SELECT lobbyid, ownerid, chatid, game, participant, ping, in_lobby "
@@ -46,7 +46,7 @@ async def get_lobby(cur: Cursor, event: CallbackQuery) -> List[Dict]:
              keys[6]: user[6]} for user in lobby] if lobby else [{'error': 'lobby does not exist in database'}]
 
 
-async def get_lobby_participants(cur: Cursor, event: CallbackQuery, in_lobby: bool) -> List[Dict]:
+async def get_lobby_participants(cur: Cursor, event: CallbackQuery.Event, in_lobby: bool) -> List[Dict]:
     """Gets only in lobby participants from database and format it friendly way"""
     lobby_msg = await event.get_message()
     lobby = cur.execute("SELECT lobbyid, ownerid, chatid, game, participant, ping, in_lobby "
@@ -60,7 +60,7 @@ async def get_lobby_participants(cur: Cursor, event: CallbackQuery, in_lobby: bo
              keys[4]: user[4]} for user in lobby] if lobby else [{'error': 'lobby does not exist in database'}]
 
 
-async def get_lobby_game(cur: Cursor, event: CallbackQuery) -> str:
+async def get_lobby_game(cur: Cursor, event: CallbackQuery.Event) -> str:
     """Returns lobby game"""
     lobby_msg = await event.get_message()
     lobby = cur.execute("SELECT game FROM lobbies WHERE lobbyid == ? AND chatid == ?",
@@ -69,7 +69,7 @@ async def get_lobby_game(cur: Cursor, event: CallbackQuery) -> str:
     return lobby[0]
 
 
-async def get_lobby_ids(cur: Cursor, event: CallbackQuery) -> List[int]:
+async def get_lobby_ids(cur: Cursor, event: CallbackQuery.Event) -> List[int]:
     """Returns lobby id"""
     lobby_msg = await event.get_message()
 
@@ -77,17 +77,17 @@ async def get_lobby_ids(cur: Cursor, event: CallbackQuery) -> List[int]:
                                           (lobby_msg.id, event.chat.id,)).fetchall()]
 
 
-async def get_lobby_owner(cur: Cursor, event: CallbackQuery) -> int:
+async def get_lobby_owner(cur: Cursor, event: CallbackQuery.Event) -> int:
     """Returns lobby owner"""
     lobby_msg = await event.get_message()
-    if lobby_exists(cur=cur, lobby_id=lobby_msg.id, chat_id=event.chat.id):
+    if await lobby_exists(cur=cur, event=event):
         return cur.execute("SELECT ownerid FROM lobbies WHERE lobbyid == ? AND chatid == ? AND ownerid == participant",
                            (lobby_msg.id, event.chat.id,)).fetchone()[0]
     else:
         raise Exception('Lobby does not exist!')
 
 
-async def is_in_lobby(cur: sqlite3.Cursor, event: CallbackQuery, inside=True) -> bool:
+async def is_in_lobby(cur: sqlite3.Cursor, event: CallbackQuery.Event, inside=True) -> bool:
     """Checks if user is in lobby"""
     lobby = await get_lobby(cur=cur, event=event)
     if inside:
@@ -96,7 +96,7 @@ async def is_in_lobby(cur: sqlite3.Cursor, event: CallbackQuery, inside=True) ->
         return event.sender.id in [user['participant'] for user in lobby]
 
 
-async def change_lobby_participants(con: Connection, cur: Cursor, event: CallbackQuery, joined: bool) -> bool:
+async def change_lobby_participants(con: Connection, cur: Cursor, event: CallbackQuery.Event, joined: bool) -> bool:
     """Changes in_lobby parameter to True/False for a specified userid and lobbyid, depends on join/leave"""
     lobby_msg = await event.get_message()
     if user_subscribes(cur=cur,
@@ -120,18 +120,4 @@ async def change_lobby_participants(con: Connection, cur: Cursor, event: Callbac
 def is_lobby_empty(lobby: List) -> bool:
     """Checks if lobby is empty"""
     return not any((user['in_lobby'] for user in lobby))
-
-
-async def parse_lobby(client: TelegramClient, cur: Cursor, event: CallbackQuery) -> str:
-    """Parses lobby to its final form"""
-    game = await get_lobby_game(cur=cur, event=event)
-    chat_users = dict(await get_chat_users(client=client, event=event, details='uid', with_sender=True))
-    in_lobby = await get_lobby_participants(cur=cur, event=event, in_lobby=True)
-    in_lobby = [user for user in in_lobby if user['participant'] in chat_users]
-    owner = await get_lobby_owner(cur=cur, event=event)
-    l_msg = ", ".join(f"[{chat_users[user['participant']]}](tg://user?id={user['participant']})" for user in in_lobby)
-
-    return f'Owner: [{chat_users[owner]}](tg://user?id={owner})\n' \
-           f'Game: {game}\n'\
-           f'Lobby: {l_msg}'
 

@@ -8,9 +8,9 @@ from telethon.events import InlineQuery, NewMessage, CallbackQuery
 from telethon.errors import MessageNotModifiedError
 
 from utils.lobby import add_lobby_to_db, get_lobby, is_in_lobby, change_lobby_participants, is_lobby_empty, \
-    remove_lobby_from_db, parse_lobby, get_lobby_participants, get_lobby_owner, get_lobby_ids
-from utils.database import add_game_subscriber, get_user_games, get_chat_games, get_game_users
-from utils.chat_aux import HELP1, escape_markdown, get_sender_name, get_chat_users
+    remove_lobby_from_db, get_lobby_owner, get_lobby_ids
+from utils.database import add_game_subscriber, get_user_games, get_game_users
+from utils.chat_aux import get_sender_name, get_chat_users, get_subscribe_game, parse_lobby
 
 
 async def main(config):
@@ -44,44 +44,18 @@ async def main(config):
     client.start(bot_token=config['bot_token'])
     print("Started")
 
-    @client.on(NewMessage(pattern='/subscribe'))
-    async def subscribe(event):
-        # TODO: Create handler for subscribing, might use that also in button
-        if not event.is_reply:
-            game = event.text.split(" ", 1)[1]
-            add_game_subscriber(con, cur, event.message.from_id.user_id, event.chat.id, game)
-
-            await event.reply(
-                f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just subscribed to '{game}'!")
-        else:
-            replied_to = await event.get_reply_message()
-            if 'Game:' in replied_to.text:
-                game = replied_to.text.split('\n')[1]  # get "Game" line, then extract only game name.
-                game = game.split(':', 1)[1].strip(' ')
-                add_game_subscriber(con, cur, event.message.from_id.user_id, event.chat.id, game)
-
-                await event.reply(f"You've just subscribed to '{game}'!")
-            else:
-                await event.reply("It's not a valid lobby, please use /subscribe <game>")
-
-    # @client.on(NewMessage(pattern='/games'))
-    # async def games_handler(event):
-    # 	await event.reply('\n'.join(user_games(cur, event)), alert=True)
-
     @client.on(InlineQuery(pattern=''))
-    async def ping_inline(event):
-        games = get_user_games(cur, event)
+    async def get_games(event):
         await event.answer(
-            [event.builder.article(f'{g}', text=f'/announce {g}') for g in games])
+            [event.builder.article(f'{game}', text=f'/announce {game}') for game in get_user_games(cur, event)])
 
     @client.on(NewMessage(pattern='/announce'))
     async def announce(event):
-        # TODO: Rethink aux. function for lobby creation, could use that l8er
         game = event.text.split(' ', 1)[1]
-        chat_users = dict(await get_chat_users(client=client, event=event, details='uid', with_sender=False))
 
-        if chat_users:
+        if chat_users := dict(await get_chat_users(client=client, event=event, details='uid', with_sender=False)):
             game_users = [user for user in get_game_users(cur, event) if user in chat_users]
+            # TODO: Rethink aux. function for lobby creation (..chat_aux.parse_lobby), could use that l8er
             lobby = await event.reply(
                 f'Lobby: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})\n'
                 f'Game: {game}\n',
@@ -91,12 +65,10 @@ async def main(config):
             # TODO: Refactor code from 195, i think i can do better
             add_lobby_to_db(con=con,
                             cur=cur,
-                            lobby_id=lobby.id,
-                            owner_id=event.sender.id,
-                            chat_id=event.chat.id,
+                            event=event,
+                            lobby=lobby,
+                            ping=lobby,
                             game=game,
-                            participant=event.sender.id,
-                            ping_id=lobby.id,
                             in_lobby=True)
 
             for chunk in [game_users[x: x + 5] for x in range(0, len(game_users), 5)]:
@@ -106,37 +78,50 @@ async def main(config):
                         if user in chat_users:
                             add_lobby_to_db(con=con,
                                             cur=cur,
-                                            lobby_id=lobby.id,
-                                            owner_id=event.sender.id,
-                                            chat_id=event.chat.id,
+                                            event=event,
+                                            lobby=lobby,
+                                            ping=ping,
                                             game=game,
-                                            participant=user,
-                                            ping_id=ping.id,
                                             in_lobby=user == event.sender.id)
+
+    @client.on(NewMessage(pattern='/subscribe'))
+    async def subscribe(event):
+        try:
+            game = await get_subscribe_game(cur=cur, event=event)
+            if game not in get_user_games(cur, event):
+                add_game_subscriber(con=con, cur=cur, event=event, game=game)
+                await event.reply(
+                    f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just subscribed to '{game}'!")
+            else:
+                await event.reply(f"It is already in "
+                                  f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id})'s library!")
+        except Exception as e:
+            await event.reply(f"{e}")
+
+    @client.on(NewMessage(pattern='/games'))
+    async def games(event):
+        await event.reply('\n'.join(get_user_games(cur, event)), alert=True)
 
     @client.on(CallbackQuery(pattern=b'Subscribe'))
     async def subscribe_button(event):
-        # TODO: Rethink that database access there, use aux. functions.
-        replied_to = await event.get_message()
-        if 'Game:' in replied_to.text:
-            game = replied_to.text.split('\n')[1]  # get "Game" line, then extract only game name.
-            game = game.split(':', 1)[1].strip(' ')
+        try:
+            game = await get_subscribe_game(cur=cur, event=event)
             if game not in get_user_games(cur, event):
-                cur.execute("INSERT INTO users(userid, chatid, game) VALUES (?, ?, ?)",
-                            (event.sender_id, event.chat.id, game))
-                con.commit()
+                add_game_subscriber(con=con, cur=cur, event=event, game=game)
                 await event.respond(
                     f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just subscribed to '{game}'!")
             else:
                 await event.answer(f"It's already in your library", alert=True)
-        # await event.answer('To be implemented', alert=True)
+
+        except Exception as e:
+            await event.answer(str(e), alert=True)
 
     @client.on(CallbackQuery(pattern=b'Unsubscribe'))
     async def unsubscribe_button(event):
-        # TODO: Rethink that database access there, use aux. functions.
+        # TODO: Do the same thing as in "subscribe" handler
         replied_to = await event.get_message()
         if 'Game:' in replied_to.text:
-            game = replied_to.text.split('\n')[1]  # get "Game" line, then extract only game name.
+            game = replied_to.text.split('\n')[1]
             game = game.split(':', 1)[1].strip(' ')
             if game in [x[0] for x in cur.execute("SELECT DISTINCT game FROM users WHERE userid == ?",
                                                   (event.sender_id,)).fetchall()]:
@@ -147,49 +132,52 @@ async def main(config):
                     f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just unsubscribed '{game}'!")
             else:
                 await event.answer(f"{game} was not in your library", alert=True)
-        # await event.answer('To be implemented', alert=True)
 
     @client.on(CallbackQuery(pattern=b'Join'))
+    # TODO: Add command to join
     async def join_button(event):
-        lobby_msg = await event.get_message()
+        # TODO: Remove user from his/her ping message
         if not await is_in_lobby(cur=cur, event=event):
             try:
                 if await change_lobby_participants(con=con, cur=cur, event=event, joined=True):
+                    lobby_msg = await event.get_message()
                     l = await parse_lobby(client=client, cur=cur, event=event)
                     await lobby_msg.edit(text=l)
                     await event.answer('Joined')
-                # TODO: Add the newly joined user to lobby message
-                ...
+
             except MessageNotModifiedError as e:
                 print(e)
         else:
             await event.answer("You're already in the lobby")
 
     @client.on(CallbackQuery(pattern=b'Leave'))
+    # TODO: Add command to leave
     async def leave_button(event):
-        lobby_msg = await event.get_message()
         if await is_in_lobby(cur=cur, event=event):
-            await change_lobby_participants(con=con, cur=cur, event=event, joined=False)
-            lobby = await get_lobby(cur=cur, event=event)
-            await event.answer('Left')
-            if is_lobby_empty(lobby=lobby):
-                await client.delete_messages(event.chat.id, await get_lobby_ids(cur=cur, event=event))
-                remove_lobby_from_db(con=con, cur=cur, lobby_id=lobby_msg.id, chat_id=lobby_msg.chat.id)
-            else:
-                try:
-                    if await change_lobby_participants(con=con, cur=cur, event=event, joined=False):
-                        l = await parse_lobby(client=client, cur=cur, event=event)
-                        await lobby_msg.edit(text=l)
-                        await event.answer('Joined')
-                except MessageNotModifiedError as e:
-                    print(e)
+            if await change_lobby_participants(con=con, cur=cur, event=event, joined=False):
+                lobby = await get_lobby(cur=cur, event=event)
+                await event.answer('Left')
+                if is_lobby_empty(lobby=lobby):
+                    await client.delete_messages(event.chat.id, await get_lobby_ids(cur=cur, event=event))
+                    await remove_lobby_from_db(con=con, cur=cur, event=event)
+                else:
+                    # TODO: Exact copy of join handler, maybe aux. function?
+                    try:
+                        if await change_lobby_participants(con=con, cur=cur, event=event, joined=False):
+                            lobby_msg = await event.get_message()
+                            l = await parse_lobby(client=client, cur=cur, event=event)
+                            await lobby_msg.edit(text=l)
+                            await event.answer('Joined')
+                    except MessageNotModifiedError as e:
+                        print(e)
 
         else:
             await event.answer("You were not in the lobby")
 
     @client.on(CallbackQuery(pattern=b'Ping'))
     async def ping_button(event):
-        # TODO: Finish implementing, now its good for debugging process
+        # TODO: Finish implementing (delete previous pings, generate, update records in db and send new ones),
+        #  now its good for debugging process
         # users = game_users(cur, event)
         chat_users = dict(await get_chat_users(client=client, event=event, details='uid', with_sender=True))
         try:
