@@ -39,7 +39,7 @@ def get_sender_name(sender: User) -> str:  # fuck @divadsn
         return "PersonWithNoName"
 
 
-async def get_chat_users(client: TelegramClient, event: CallbackQuery.Event, details='all', with_sender=False) -> Union[
+async def get_chat_users(client: TelegramClient, event: CallbackQuery, details='all', with_sender=False) -> Union[
     List, List[Tuple]]:
     """Returns chat users other than sender and bots"""
     participants = (user for user in await client.get_participants(event.chat.id) if not user.is_self and not user.bot)
@@ -58,7 +58,7 @@ async def get_chat_users(client: TelegramClient, event: CallbackQuery.Event, det
         return [user for user in participants]
 
 
-async def get_subscribe_game(cur: Cursor, event: Union[NewMessage.Event, CallbackQuery.Event]) -> str:
+async def get_subscribe_game(cur: Cursor, event: Union[NewMessage, CallbackQuery]) -> str:
     if isinstance(event, CallbackQuery.Event) and await lobby_exists(cur=cur, event=event):
         game = await get_lobby_game(cur=cur, event=event)
     elif isinstance(event, NewMessage.Event):
@@ -84,12 +84,12 @@ def set_ping_messages():
     ...
 
 
-async def parse_lobby(client: TelegramClient, cur: Cursor, event: CallbackQuery.Event) -> str:
+async def parse_lobby(client: TelegramClient, cur: Cursor, event: CallbackQuery) -> str:
     """Parses lobby to its final form"""
     game = await get_lobby_game(cur=cur, event=event)
     chat_users = dict(await get_chat_users(client=client, event=event, details='uid', with_sender=True))
-    in_lobby = await get_lobby_participants(cur=cur, event=event, in_lobby=True)
-    in_lobby = [user for user in in_lobby if user['participant'] in chat_users]
+    in_lobby = [user for user in await get_lobby_participants(cur=cur, event=event, in_lobby=True)
+                if user['participant'] in chat_users]
     owner = await get_lobby_owner(cur=cur, event=event)
     l_msg = ", ".join(f"[{chat_users[user['participant']]}](tg://user?id={user['participant']})" for user in in_lobby)
 
