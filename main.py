@@ -54,7 +54,7 @@ async def main(config):
         game = event.text.split(' ', 1)[1]
 
         if chat_users := dict(await get_chat_users(client=client, event=event, details='uid', with_sender=False)):
-            game_users = [user for user in await get_game_users(cur, event) if user in chat_users]
+            game_users = [user for user in get_game_users(cur, event) if user in chat_users]
             # TODO: Rethink aux. function for lobby creation (..chat_aux.parse_lobby), could use that l8er
             lobby = await event.reply(
                 f'Lobby: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})\n'
