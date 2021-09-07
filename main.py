@@ -51,40 +51,39 @@ async def main(config):
 
     @client.on(NewMessage(pattern='/announce'))
     async def announce(event):
-        game = event.text.split(' ', 1)[1]
+        if game := event.text.split(' ', 1)[1]:
+            if chat_users := dict(await get_chat_users(client=client, event=event, details='uid', with_sender=False)):
+                game_users = [user for user in get_game_users(cur, event) if user in chat_users]
+                # TODO: Rethink aux. function for lobby creation (..chat_aux.parse_lobby), could use that l8er
+                lobby = await event.reply(
+                    f'Lobby: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})\n'
+                    f'Game: {game}\n',
+                    # buttons=[[Button.inline('Ping')], [Button.inline('Join'), Button.inline('Leave')],
+                    #          [Button.inline('Subscribe'), Button.inline('Unsubscribe')]])
+                    buttons=[[Button.inline('Join'), Button.inline('Leave')],
+                             [Button.inline('Subscribe'), Button.inline('Unsubscribe')]])
 
-        if chat_users := dict(await get_chat_users(client=client, event=event, details='uid', with_sender=False)):
-            game_users = [user for user in get_game_users(cur, event) if user in chat_users]
-            # TODO: Rethink aux. function for lobby creation (..chat_aux.parse_lobby), could use that l8er
-            lobby = await event.reply(
-                f'Lobby: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})\n'
-                f'Game: {game}\n',
-                # buttons=[[Button.inline('Ping')], [Button.inline('Join'), Button.inline('Leave')],
-                #          [Button.inline('Subscribe'), Button.inline('Unsubscribe')]])
-                buttons=[[Button.inline('Join'), Button.inline('Leave')],
-                         [Button.inline('Subscribe'), Button.inline('Unsubscribe')]])
+                # TODO: Refactor code from 195, i think i can do better
+                add_lobby_to_db(con=con,
+                                cur=cur,
+                                event=event,
+                                lobby=lobby,
+                                ping=lobby,
+                                game=game,
+                                in_lobby=True)
 
-            # TODO: Refactor code from 195, i think i can do better
-            add_lobby_to_db(con=con,
-                            cur=cur,
-                            event=event,
-                            lobby=lobby,
-                            ping=lobby,
-                            game=game,
-                            in_lobby=True)
-
-            for chunk in [game_users[x: x + 5] for x in range(0, len(game_users), 5)]:
-                if lobby_chunk := ", ".join(f"[{chat_users[id_]}](tg://user?id={id_})" for id_ in chunk):
-                    ping = await lobby.reply(lobby_chunk)
-                    for user in chunk:
-                        if user in chat_users:
-                            add_lobby_to_db(con=con,
-                                            cur=cur,
-                                            event=event,
-                                            lobby=lobby,
-                                            ping=ping,
-                                            game=game,
-                                            in_lobby=user == event.sender.id)
+                for chunk in [game_users[x: x + 5] for x in range(0, len(game_users), 5)]:
+                    if lobby_chunk := ", ".join(f"[{chat_users[id_]}](tg://user?id={id_})" for id_ in chunk):
+                        ping = await lobby.reply(lobby_chunk)
+                        for user in chunk:
+                            if user in chat_users:
+                                add_lobby_to_db(con=con,
+                                                cur=cur,
+                                                event=event,
+                                                lobby=lobby,
+                                                ping=ping,
+                                                game=game,
+                                                in_lobby=user == event.sender.id)
 
     @client.on(NewMessage(pattern='/games'))
     async def games(event):
@@ -127,7 +126,7 @@ async def main(config):
                 await event.respond(
                     f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just unsubscribed '{game}'!")
             else:
-                await event.answer(f"{game} was not in your library", alert=True)
+                await event.answer(f"{game} is not in your library", alert=True)
 
         except Exception as e:
             await event.answer(str(e), alert=True)
