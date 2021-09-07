@@ -106,7 +106,7 @@ async def is_in_lobby(cur: sqlite3.Cursor, event: Union[CallbackQuery, int], ins
         return id in [user['participant'] for user in lobby]
 
 
-async def change_lobby_participants(con: Connection, cur: Cursor, event: CallbackQuery, joined: bool) -> bool:
+async def change_lobby_participants(con: Connection, cur: Cursor, event: CallbackQuery, joined: bool) -> None:
     """Changes in_lobby parameter to True/False for a specified userid and lobbyid, depends on join/leave"""
     lobby_msg = await event.get_message()
     if user_subscribes(cur=cur,
@@ -124,7 +124,6 @@ async def change_lobby_participants(con: Connection, cur: Cursor, event: Callbac
                                                event.sender.id, 0, joined,)
                     )
     con.commit()
-    return True
 
 
 async def update_lobby_pings(con: Connection, cur: Cursor, event: CallbackQuery):

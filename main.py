@@ -88,7 +88,7 @@ async def main(config):
 
     @client.on(NewMessage(pattern='/games'))
     async def games(event):
-        await event.reply('\n'.join(get_user_games(cur, event)), alert=True)
+        await event.reply('\n'.join(get_user_games(cur, event)))
 
     @client.on(NewMessage(pattern='/subscribe'))
     async def subscribe(event):
@@ -133,16 +133,15 @@ async def main(config):
             await event.answer(str(e), alert=True)
 
     @client.on(CallbackQuery(pattern=b'Join'))
-    # TODO: Add command to join
     async def join_button(event):
         # TODO: Remove user from his/her ping message
         if not await is_in_lobby(cur=cur, event=event):
             try:
-                if await change_lobby_participants(con=con, cur=cur, event=event, joined=True):
-                    lobby_msg = await event.get_message()
-                    l = await parse_lobby(client=client, cur=cur, event=event)
-                    await lobby_msg.edit(text=l)
-                    await event.answer('Joined')
+                await change_lobby_participants(con=con, cur=cur, event=event, joined=True)
+                lobby_msg = await event.get_message()
+                l = await parse_lobby(client=client, cur=cur, event=event)
+                await lobby_msg.edit(text=l)
+                await event.answer('Joined')
 
             except MessageNotModifiedError as e:
                 print(e)
@@ -150,24 +149,23 @@ async def main(config):
             await event.answer("You're already in the lobby")
 
     @client.on(CallbackQuery(pattern=b'Leave'))
-    # TODO: Add command to leave
     async def leave_button(event):
         if await is_in_lobby(cur=cur, event=event):
-            if await change_lobby_participants(con=con, cur=cur, event=event, joined=False):
-                lobby = await get_lobby(cur=cur, event=event)
-                await event.answer('Left')
-                if is_lobby_empty(lobby=lobby):
-                    await client.delete_messages(event.chat.id, await get_lobby_ids(cur=cur, event=event))
-                    await remove_lobby_from_db(con=con, cur=cur, event=event)
-                else:
-                    try:
-                        if await change_lobby_participants(con=con, cur=cur, event=event, joined=False):
-                            lobby_msg = await event.get_message()
-                            l = await parse_lobby(client=client, cur=cur, event=event)
-                            await lobby_msg.edit(text=l)
-                            await event.answer('Left')
-                    except MessageNotModifiedError as e:
-                        print(e)
+            await change_lobby_participants(con=con, cur=cur, event=event, joined=False)
+            lobby = await get_lobby(cur=cur, event=event)
+            await event.answer('Left')
+            if is_lobby_empty(lobby=lobby):
+                await client.delete_messages(event.chat.id, await get_lobby_ids(cur=cur, event=event))
+                await remove_lobby_from_db(con=con, cur=cur, event=event)
+            else:
+                try:
+                    await change_lobby_participants(con=con, cur=cur, event=event, joined=False)
+                    lobby_msg = await event.get_message()
+                    l = await parse_lobby(client=client, cur=cur, event=event)
+                    await lobby_msg.edit(text=l)
+                    await event.answer('Left')
+                except MessageNotModifiedError as e:
+                    print(e)
 
         else:
             await event.answer("You were not in the lobby")
