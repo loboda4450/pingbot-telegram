@@ -1,7 +1,5 @@
-import sqlite3
 from datetime import datetime
-from sqlite3 import Connection, Cursor
-from typing import List, Dict, Tuple, Union
+from typing import List
 
 from telethon.events import CallbackQuery
 from telethon.tl.custom import Message
@@ -38,7 +36,8 @@ def add_lobby(event: CallbackQuery, lobby: Message, participant: int,
               game=game,
               participant=participant,
               ping=ping.id,
-              in_lobby=in_lobby)
+              in_lobby=in_lobby,
+              created=datetime.now())
         return True
     else:
         return False
@@ -56,6 +55,7 @@ def modify_participant(lobby: Message, participant: int, in_lobby: bool) -> None
     db_participant = Lobby.get(lobbyid=lobby.id, chatid=lobby.chat.id, participant=participant)
     if db_participant:
         db_participant.in_lobby = in_lobby
+        db_participant.created = datetime.now()
         commit()
     else:
         owner = get_lobby_owner(lobby=lobby)
@@ -65,7 +65,8 @@ def modify_participant(lobby: Message, participant: int, in_lobby: bool) -> None
               game=owner.game,
               participant=participant,
               ping=None,
-              in_lobby=in_lobby)
+              in_lobby=in_lobby,
+              created=datetime.now())
 
 
 @db_session

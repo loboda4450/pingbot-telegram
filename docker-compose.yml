@@ -5,6 +5,6 @@ services:
     build: .
     volumes:
       - ./config.yml:/app/config.yml:ro
-      - ./users.db:/app/users.db
+      - ./utils/users-orm.db:/app/utils/users-orm.db
       - ./PingBot.session:/app/PingBot.session
     restart: unless-stopped

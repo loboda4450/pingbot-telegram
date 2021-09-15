@@ -67,7 +67,7 @@ async def main(config):
 
     @client.on(CallbackQuery(pattern=b'Unsubscribe'))
     async def unsubscribe_button(event):
-        game=await get_game(event=event)
+        game = await get_game(event=event)
         if remove_subscriber(event=event, game=game):
             await event.respond(
                 f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just unsubscribed '{game}'!")

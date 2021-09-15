@@ -3,7 +3,6 @@ from typing import List, Union
 from pony.orm import *
 from utils.lobby import logme
 
-# import pony.orm as pony
 db = Database("sqlite", "users-orm.sqlite", create_db=True)
 
 
@@ -50,8 +49,3 @@ def get_game_subscribers(event: Union[NewMessage, CallbackQuery]) -> List:
 @logme
 def get_user_games(event: Union[NewMessage, CallbackQuery]) -> List:
     return [user.game for user in User.select(userid=event.sender.id)]
-
-
-@db_session
-def fill_after_fuckup():
-    import sqlite3
