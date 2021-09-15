@@ -1,48 +1,51 @@
 from sqlite3 import Connection, Cursor
+
+import pony.orm
 from telethon.events import CallbackQuery, NewMessage, InlineQuery
 from typing import List, Union
+from pony.orm import *
+
+# import pony.orm as pony
+db = Database("sqlite", "users-orm.sqlite", create_db=True)
 
 
-def add_game_subscriber(con: Connection, cur: Cursor,
-                        event: Union[NewMessage, CallbackQuery], game: str) -> None:
-    # TODO: Work on exceptions there
-    """Adds a game subscriber to database"""
-    try:
-        cur.execute("INSERT INTO users(userid, chatid, game) VALUES (?, ?, ?)", (event.sender_id, event.chat.id, game))
-        con.commit()
-    except Exception as e:
-        raise Exception('Database exception') from e
+class User(db.Entity):
+    userid = Required(int)
+    chatid = Required(int)
+    game = Required(str)
+    PrimaryKey(userid, chatid, game)
 
 
-def remove_game_subscriber(con: Connection, cur: Cursor,
-                           event: Union[NewMessage, CallbackQuery], game: str) -> None:
-    # TODO: Work on exceptions there
-    """Removes a game subscriber from database"""
-    try:
-        cur.execute("DELETE FROM users WHERE userid == ? AND chatid == ? AND game == ?",
-                    (event.sender.id, event.chat.id, game,))
-        con.commit()
-    except Exception as e:
-        raise Exception('Database exception') from e
+db.generate_mapping(create_tables=True)
 
 
-def get_user_games(cur: Cursor, event: Union[NewMessage, CallbackQuery, InlineQuery]) -> List:
-    """Gets user games from database and format it friendly way"""
-    return [x[0] for x in
-            cur.execute("SELECT DISTINCT game FROM users WHERE userid == ?", (event.sender_id,)).fetchall()]
+@db_session
+def add_subscriber(event: Union[NewMessage, CallbackQuery], game: str) -> bool:
+    print("Woke up add_subscriber: {}, {}, {}".format(event.sender_id, event.chat.id, game))
+    if not User.exists(userid=event.sender_id, chatid=event.chat.id, game=game):
+        User(userid=event.sender_id, chatid=event.chat.id, game=game)
+        return True
+    else:
+        return False
 
 
-def get_chat_games(cur: Cursor, event: Union[NewMessage, CallbackQuery]) -> List:
-    """Gets chat games from database and format it friendly way"""
-    return [x[0] for x in cur.execute("SELECT DISTINCT game FROM users WHERE chatid == ?", (event.chat.id,)).fetchall()]
+@db_session
+def remove_subscriber(event: Union[NewMessage, CallbackQuery], game: str) -> bool:
+    print("Woke up remove_subscriber: {}, {}, {}".format(event.sender_id, event.chat.id, game))
+    if User.exists(userid=event.sender_id, chatid=event.chat.id, game=game):
+        User.get(userid=event.sender.id, chatid=event.chat.id, game=game).delete()
+        return True
+    else:
+        return False
 
 
-def get_game_users(cur: Cursor, event: Union[NewMessage, CallbackQuery]) -> List:
-    """Gets game users other than event requester from database and format it friendly way"""
-    return [x[0] for x in cur.execute("SELECT userid FROM users WHERE chatid == ? AND game == ? AND userid != ?",
-                                      (event.chat.id, event.text.split(' ', 1)[1], event.sender.id)).fetchall()]
+# @db_session
+# def get_game_subscribers(event: Union[NewMessage, CallbackQuery]):
+#     return db.select(user for user in User if user.chatid == event.chat.id and
+#                      user.userid != event.sender.id and
+#                      user.game == event.text.split(' ', 1)[1])
 
 
-def user_subscribes(cur: Cursor, event: Union[NewMessage, CallbackQuery], game: str) -> bool:
-    return cur.execute("""SELECT COUNT(*) FROM users WHERE userid == ? AND chatid == ? AND game == ?""",
-                       (event.sender.id, event.chat.id, game,)).fetchone()[0] > 0
+@db_session
+def get_user_games(event: Union[NewMessage, CallbackQuery]) -> List:
+    return [user.game for user in User.select(userid=event.sender.id)]

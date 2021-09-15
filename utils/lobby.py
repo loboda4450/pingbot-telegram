@@ -4,16 +4,40 @@ from typing import List, Dict, Tuple, Union
 
 from telethon.events import CallbackQuery
 from telethon.tl.custom import Message
-from utils.database import user_subscribes
+from pony.orm import *
+
+db = Database("sqlite", "users-orm.sqlite", create_db=True)
 
 
-def add_lobby_to_db(con: Connection, cur: Cursor, event: CallbackQuery, lobby: Message,
-                    ping: Message, game: str, in_lobby: bool) -> None:
-    """Adds every pinged user for lobby to database"""
-    cur.execute("INSERT INTO lobbies(lobbyid, ownerid, chatid, game, participant, ping, in_lobby) "
-                "VALUES (?,?,?,?,?,?,?)",
-                (lobby.id, event.sender.id, event.chat.id, game, event.sender.id, ping.id, in_lobby))
-    con.commit()
+class Lobby(db.Entity):
+    id = PrimaryKey(int, auto=True)
+    lobbyid = Required(int)
+    ownerid = Required(int)
+    chatid = Required(int)
+    game = Required(str)
+    participant = Required(int)
+    ping = Required(int)
+    in_lobby = Required(bool)
+
+
+db.generate_mapping(create_tables=True)
+
+
+@db_session
+def add_lobby(event: CallbackQuery, lobby: Message,
+              ping: Message, game: str, in_lobby: bool) -> True:
+    if not Lobby.exists(lobbyid=lobby.id, owner_id=event.sender.id, chatid=event.chat.id,
+                        game=game, participant=event.sender.id, ping=ping.id, in_lobby=in_lobby):
+        Lobby(lobbyid=lobby.id,
+              owner_id=event.sender.id,
+              chatid=event.chat.id,
+              game=game,
+              participant=event.sender.id,
+              ping=ping.id,
+              in_lobby=in_lobby)
+        return True
+    else:
+        return False
 
 
 async def remove_lobby_from_db(con: Connection, cur: Cursor, event: CallbackQuery):

@@ -58,10 +58,10 @@ async def get_chat_users(client: TelegramClient, event: CallbackQuery, details='
         return [user for user in participants]
 
 
-async def get_subscribe_game(cur: Cursor, event: Union[NewMessage, CallbackQuery]) -> str:
-    if isinstance(event, CallbackQuery.Event) and await lobby_exists(cur=cur, event=event):
-        game = await get_lobby_game(cur=cur, event=event)
-    elif isinstance(event, NewMessage.Event):
+async def get_subscribe_game(event: Union[NewMessage, CallbackQuery]) -> str:
+    # if isinstance(event, CallbackQuery.Event) and await lobby_exists(cur=cur, event=event):
+    #     game = await get_lobby_game(cur=cur, event=event)
+    if isinstance(event, NewMessage.Event):
         if not event.is_reply:
             game = event.text.split(" ", 1)[1]
         else:
