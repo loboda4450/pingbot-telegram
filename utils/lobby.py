@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 from sqlite3 import Connection, Cursor
 from typing import List, Dict, Tuple, Union
 
@@ -19,6 +20,7 @@ class Lobby(db.Entity):
     participant = Required(int)
     ping = Optional(int)
     in_lobby = Required(bool)
+    created = Required(datetime)
 
 
 db.generate_mapping(create_tables=True)
