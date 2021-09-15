@@ -10,7 +10,7 @@ from telethon.errors import MessageNotModifiedError
 from utils.lobby import add_lobby_to_db, get_lobby, is_in_lobby, change_lobby_participants, is_lobby_empty, \
     remove_lobby_from_db, get_lobby_ids, get_lobby_ping_ids, get_lobby_participants
 from utils.database import add_game_subscriber, get_user_games, get_game_users, remove_game_subscriber
-from utils.chat_aux import get_sender_name, get_chat_users, get_subscribe_game, parse_lobby
+from utils.chat_aux import get_sender_name, get_chat_users, get_game, parse_lobby
 
 
 async def main(config):
@@ -92,7 +92,7 @@ async def main(config):
     @client.on(NewMessage(pattern='/subscribe'))
     async def subscribe(event):
         try:
-            game = await get_subscribe_game(cur=cur, event=event)
+            game = await get_game(cur=cur, event=event)
             if game not in get_user_games(cur, event):
                 add_game_subscriber(con=con, cur=cur, event=event, game=game)
                 await event.reply(
@@ -106,7 +106,7 @@ async def main(config):
     @client.on(CallbackQuery(pattern=b'Subscribe'))
     async def subscribe_button(event):
         try:
-            game = await get_subscribe_game(cur=cur, event=event)
+            game = await get_game(cur=cur, event=event)
             if game not in get_user_games(cur, event):
                 add_game_subscriber(con=con, cur=cur, event=event, game=game)
                 await event.respond(
@@ -120,7 +120,7 @@ async def main(config):
     @client.on(CallbackQuery(pattern=b'Unsubscribe'))
     async def unsubscribe_button(event):
         try:
-            game = await get_subscribe_game(cur=cur, event=event)
+            game = await get_game(cur=cur, event=event)
             if game in get_user_games(cur, event):
                 remove_game_subscriber(con=con, cur=cur, event=event, game=game)
                 await event.respond(

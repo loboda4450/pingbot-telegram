@@ -1,14 +1,15 @@
 from re import sub
 from typing import List, Generator, Union, Tuple
 
+import functools
+import logging
+
 from telethon.tl.types import User
 from telethon.client import TelegramClient
 from telethon.events import CallbackQuery, NewMessage
 from telethon.tl.custom import Message
 
-from sqlite3 import Connection, Cursor
-
-from utils.lobby import lobby_exists, get_lobby_game, get_lobby_participants, get_lobby_owner
+from utils.lobby import *
 
 HELP1 = 'Commands:\n' \
         '/subscribe <game>: Get notified about newly created lobbies\n' \
@@ -16,13 +17,6 @@ HELP1 = 'Commands:\n' \
         '/join: reply to a existing lobby to join it\n' \
         '/ping: Type it in inline mode to get list of your games and to create a lobby\n' \
         '/announce <game>: Manually create a lobby'
-
-
-def escape_markdown(text: str) -> str:
-    """Escape markdown to prevent markdown injection XDD"""
-    parse = sub(r"([_*\[\]()~`>\#\+\-=|\.!])", r"\\\1", text)
-    reparse = sub(r"\\\\([_*\[\]()~`>\#\+\-=|\.!])", r"\1", parse)
-    return reparse
 
 
 def get_sender_name(sender: User) -> str:  # fuck @divadsn
@@ -58,10 +52,10 @@ async def get_chat_users(client: TelegramClient, event: CallbackQuery, details='
         return [user for user in participants]
 
 
-async def get_subscribe_game(event: Union[NewMessage, CallbackQuery]) -> str:
-    # if isinstance(event, CallbackQuery.Event) and await lobby_exists(cur=cur, event=event):
-    #     game = await get_lobby_game(cur=cur, event=event)
-    if isinstance(event, NewMessage.Event):
+async def get_game(event: Union[NewMessage, CallbackQuery]) -> str:
+    if isinstance(event, CallbackQuery.Event) and lobby_exists(lobby=await event.get_message()):
+        game = get_lobby_game(lobby=await event.get_message())
+    elif isinstance(event, NewMessage.Event):
         if not event.is_reply:
             game = event.text.split(" ", 1)[1]
         else:
@@ -84,15 +78,13 @@ def set_ping_messages():
     ...
 
 
-async def parse_lobby(client: TelegramClient, cur: Cursor, event: CallbackQuery) -> str:
+async def parse_lobby(client: TelegramClient, event: CallbackQuery, lobby: Message) -> str:
     """Parses lobby to its final form"""
-    game = await get_lobby_game(cur=cur, event=event)
+    game = get_lobby_game(lobby=lobby)
     chat_users = dict(await get_chat_users(client=client, event=event, details='uid', with_sender=True))
-    in_lobby = [user for user in await get_lobby_participants(cur=cur, event=event, in_lobby=True)
-                if user['participant'] in chat_users]
-    owner = await get_lobby_owner(cur=cur, event=event)
-    l_msg = ", ".join(f"[{chat_users[user['participant']]}](tg://user?id={user['participant']})" for user in in_lobby)
-
+    in_lobby = [user for user in get_lobby_participants(lobby=lobby, in_lobby=True) if user.participant in chat_users]
+    owner = get_lobby_owner(lobby=lobby).ownerid
+    l_msg = ", ".join(f"[{chat_users[user.participant]}](tg://user?id={user.participant})" for user in in_lobby)
     return f'Owner: [{chat_users[owner]}](tg://user?id={owner})\n' \
            f'Game: {game}\n' \
            f'Lobby: {l_msg}'
