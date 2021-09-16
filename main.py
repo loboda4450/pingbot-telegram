@@ -54,7 +54,8 @@ async def main(config):
     @client.on(NewMessage(pattern='/subscribe'))
     async def subscribe(event):
         if add_subscriber(event=event, game=await get_game(event=event)):
-            await event.reply(f"Subscribed")
+            await event.respond(
+                f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just subscribed to '{await get_game(event=event)}'!")
         else:
             await event.reply(f"It is already in your library!")
 
@@ -79,31 +80,34 @@ async def main(config):
     @client.on(CallbackQuery(pattern=b'Join'))
     async def join_button(event):
         lobby = await event.get_message()
-        modify_participant(lobby=lobby, participant=event.sender.id, in_lobby=True)
-        msg = await parse_lobby(client=client, event=event, lobby=lobby)
-        try:
-            await lobby.edit(text=msg)
-            await event.answer(f'Joined')
-        except MessageNotModifiedError as e:
-            logger.debug(e)
+        if modify_participant(lobby=lobby, participant=event.sender.id, in_lobby=True):
+            msg = await parse_lobby(client=client, event=event, lobby=lobby)
+            try:
+                await lobby.edit(text=msg)
+                await event.answer(f'Joined')
+            except MessageNotModifiedError as e:
+                logger.debug(e)
+        else:
+            await event.answer('You are already in this lobby', alert=True)
 
     @client.on(CallbackQuery(pattern=b'Leave'))
     async def leave_button(event):
         lobby = await event.get_message()
-        modify_participant(lobby=lobby, participant=event.sender.id, in_lobby=False)
-        msg = await parse_lobby(client=client, event=event, lobby=lobby)
-        try:
-            await lobby.edit(text=msg)
-            await event.answer(f'Leave')
-        except MessageNotModifiedError as e:
-            logger.debug(e)
+        if modify_participant(lobby=lobby, participant=event.sender.id, in_lobby=False):
+            msg = await parse_lobby(client=client, event=event, lobby=lobby)
+            try:
+                await lobby.edit(text=msg)
+                await event.answer(f'Left')
+            except MessageNotModifiedError as e:
+                logger.debug(e)
 
-        if is_lobby_empty(lobby=lobby):
-            x = get_lobby_msg_ids(lobby=lobby)
-            await client.delete_messages(event.chat.id, x)
-            remove_lobby(lobby=lobby)
+            if is_lobby_empty(lobby=lobby):
+                x = get_lobby_msg_ids(lobby=lobby)
+                await client.delete_messages(event.chat.id, x)
+                remove_lobby(lobby=lobby)
+        else:
+            await event.answer('You were not in this lobby!', alert=True)
 
-        await event.answer(f'Left')
 
     async with client:
         print("Good morning!")

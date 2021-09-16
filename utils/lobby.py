@@ -51,12 +51,16 @@ def remove_lobby(lobby: Message) -> None:
 
 @db_session
 @logme
-def modify_participant(lobby: Message, participant: int, in_lobby: bool) -> None:
+def modify_participant(lobby: Message, participant: int, in_lobby: bool) -> bool:
     db_participant = Lobby.get(lobbyid=lobby.id, chatid=lobby.chat.id, participant=participant)
     if db_participant:
-        db_participant.in_lobby = in_lobby
-        db_participant.created = datetime.now()
-        commit()
+        if db_participant.in_lobby != in_lobby:
+            db_participant.in_lobby = in_lobby
+            db_participant.created = datetime.now()
+            commit()
+            return True
+        else:
+            return False
     else:
         owner = get_lobby_owner(lobby=lobby)
         Lobby(lobbyid=owner.lobbyid,
@@ -67,6 +71,8 @@ def modify_participant(lobby: Message, participant: int, in_lobby: bool) -> None
               ping=None,
               in_lobby=in_lobby,
               created=datetime.now())
+
+        return True
 
 
 @db_session
