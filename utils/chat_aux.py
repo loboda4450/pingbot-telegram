@@ -1,22 +1,10 @@
-from re import sub
-from typing import List, Generator, Union, Tuple
-
-import functools
-import logging
+from typing import Union, Tuple
 
 from telethon.tl.types import User
 from telethon.client import TelegramClient
-from telethon.events import CallbackQuery, NewMessage
-from telethon.tl.custom import Message
+from telethon.events import NewMessage
 
 from utils.lobby import *
-
-HELP1 = 'Commands:\n' \
-        '/subscribe <game>: Get notified about newly created lobbies\n' \
-        '/enroll: reply to existing lobby to subscribe game\n' \
-        '/join: reply to a existing lobby to join it\n' \
-        '/ping: Type it in inline mode to get list of your games and to create a lobby\n' \
-        '/announce <game>: Manually create a lobby'
 
 
 def get_sender_name(sender: User) -> str:  # fuck @divadsn

@@ -1,4 +1,6 @@
 import asyncio
+import logging
+
 import yaml
 
 from telethon import Button
