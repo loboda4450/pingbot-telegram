@@ -65,7 +65,8 @@ async def main(config):
         game = await get_game(event=event)
         if add_subscriber(event=event, game=game):
             await event.respond(
-                f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just subscribed to '{game}'!")
+                f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just subscribed to '{game}'!",
+                buttons=[Button.inline('Subscribe')])
         else:
             await event.answer(f"It is already in your library!", alert=True)
 
