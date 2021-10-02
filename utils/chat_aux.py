@@ -47,7 +47,8 @@ async def get_game(event: Union[NewMessage, CallbackQuery]) -> str:
         else:
             t = await event.get_message()
             t = t.raw_text
-            game = t.split(" just subscribed to '", 1)[1].rsplit("'!", 1)[0]
+            game = t.split(" just unsubscribed '", 1)[1].rsplit("'!", 1)[0] if 'unsubscribed' in t \
+                else t.split(" just subscribed to '", 1)[1].rsplit("'!", 1)[0]
 
     elif isinstance(event, NewMessage.Event):
         if not event.is_reply:
