@@ -55,7 +55,8 @@ async def main(config):
     async def subscribe(event):
         if add_subscriber(event=event, game=await get_game(event=event)):
             await event.respond(
-                f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just subscribed to '{await get_game(event=event)}'!")
+                f"[{get_sender_name(event.sender)}](tg://user?id={event.sender_id}) just subscribed to "
+                f"'{await get_game(event=event)}'!", buttons=[Button.inline('Subscribe')])
         else:
             await event.reply(f"It is already in your library!")
 
@@ -107,7 +108,6 @@ async def main(config):
                 remove_lobby(lobby=lobby)
         else:
             await event.answer('You were not in this lobby!', alert=True)
-
 
     async with client:
         print("Good morning!")

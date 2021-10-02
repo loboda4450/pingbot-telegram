@@ -41,8 +41,14 @@ async def get_chat_users(client: TelegramClient, event: CallbackQuery, details='
 
 
 async def get_game(event: Union[NewMessage, CallbackQuery]) -> str:
-    if isinstance(event, CallbackQuery.Event) and lobby_exists(lobby=await event.get_message()):
-        game = get_lobby_game(lobby=await event.get_message())
+    if isinstance(event, CallbackQuery.Event):
+        if lobby_exists(lobby=await event.get_message()):
+            game = get_lobby_game(lobby=await event.get_message())
+        else:
+            t = await event.get_message()
+            t = t.raw_text
+            game = t.split(" just subscribed to '", 1)[1].rsplit("'!", 1)[0]
+
     elif isinstance(event, NewMessage.Event):
         if not event.is_reply:
             game = event.text.split(" ", 1)[1]
@@ -52,7 +58,7 @@ async def get_game(event: Union[NewMessage, CallbackQuery]) -> str:
                 game = lobby_msg.text.split('\n')[1]
                 game = game.split(':', 1)[1].strip(' ')
             else:
-                raise Exception('Lobby does not contain game!')
+                raise Exception('Message does not contain game!')
 
     else:
         raise Exception('Wrong event type!')
