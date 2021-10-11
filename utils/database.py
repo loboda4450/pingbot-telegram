@@ -49,3 +49,9 @@ def get_game_subscribers(event: Union[NewMessage, CallbackQuery]) -> List:
 @logme
 def get_user_games(event: Union[NewMessage, CallbackQuery]) -> List:
     return [user.game for user in User.select(userid=event.sender.id)]
+
+
+@db_session
+@logme
+def get_chat_games(event: Union[NewMessage, CallbackQuery]) -> List:
+    return list(select(user.game for user in User).distinct())

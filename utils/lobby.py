@@ -1,8 +1,10 @@
-from datetime import datetime
+import asyncio
+from datetime import datetime, timedelta
 from typing import List
 
 from telethon.events import CallbackQuery
 from telethon.tl.custom import Message
+from telethon.client import TelegramClient
 from pony.orm import *
 from utils.logme import logme
 
@@ -111,3 +113,31 @@ def lobby_exists(lobby: Message) -> bool:
 @logme
 def get_lobby_msg_ids(lobby: Message) -> List[int]:
     return [msg.ping for msg in Lobby.select(lobbyid=lobby.id, chatid=lobby.chat.id).distinct()]
+
+
+@db_session
+@logme
+async def penis(client: TelegramClient, query: CallbackQuery = None):
+    to_delete = []
+    x = select(l for l in Lobby if l.created < (datetime.now() - timedelta(hours=6)) and
+               l.ownerid == l.participant and
+               l.chatid == query.chat.id)
+    for l in x:
+        y = select(a for a in Lobby if a.lobbyid == l.lobbyid).distinct()
+        for a in y:
+            to_delete.append(a.ping)
+
+        y.delete()
+
+    await client.delete_messages(query.chat.id, to_delete)
+    commit()
+
+
+# @db_session
+# @logme
+# async def cleanup_outdated_lobbies(client: TelegramClient, query: CallbackQuery = None):
+#     while True:
+#         await asyncio.sleep(6 * 60 * 60)
+#         await penis(client=client, query=query)
+
+

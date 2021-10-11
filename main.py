@@ -19,10 +19,15 @@ async def main(config):
     client.start(bot_token=config['bot_token'])
     print("Started")
 
-    @client.on(InlineQuery(pattern=''))
-    async def get_games(event):
-        await event.answer(
-            [event.builder.article(f'{game}', text=f'/announce {game}') for game in get_user_games(event)])
+    @client.on(InlineQuery)
+    async def handle_iq(event):
+        if event.text == '':
+            await event.answer(
+                [event.builder.article(f'{game}', text=f'/announce {game}') for game in get_user_games(event)])
+
+        elif event.text == '.g' or event.text == '.games':
+            await event.answer(
+                [event.builder.article(f'{game}', text=f'/subscribe {game}') for game in get_chat_games(event)])
 
     @client.on(NewMessage(pattern='/announce'))
     async def announce(event):
@@ -33,10 +38,11 @@ async def main(config):
                     f'Owner: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})\n'
                     f'Game: {game}\n'
                     f'Lobby: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})',
-                    # buttons=[[Button.inline('Ping')], [Button.inline('Join'), Button.inline('Leave')],
-                    #          [Button.inline('Subscribe'), Button.inline('Unsubscribe')]])
-                    buttons=[[Button.inline('Join'), Button.inline('Leave')],
+                    buttons=[[Button.inline('Ping')], [Button.inline('Join'), Button.inline('Leave')],
                              [Button.inline('Subscribe'), Button.inline('Unsubscribe')]])
+                # buttons=[[Button.inline('Join'), Button.inline('Leave')],
+                #          [Button.inline('Subscribe'), Button.inline('Unsubscribe')],
+                #          [Button.inline('Test')]])
 
                 if add_lobby(event=event, lobby=lobby, participant=event.sender.id, ping=lobby, game=game,
                              in_lobby=True):
@@ -110,6 +116,10 @@ async def main(config):
                 remove_lobby(lobby=lobby)
         else:
             await event.answer('You were not in this lobby!', alert=True)
+
+    # @client.on(CallbackQuery(pattern=b'Test'))
+    # async def test_button(event):
+    #     await cleanup_outdated_lobbies(client=client, query=event)
 
     async with client:
         print("Good morning!")

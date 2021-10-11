@@ -1,7 +1,7 @@
+import asyncio
 from typing import Union, Tuple
 
 from telethon.tl.types import User
-from telethon.client import TelegramClient
 from telethon.events import NewMessage
 
 from utils.lobby import *
@@ -67,13 +67,13 @@ async def get_game(event: Union[NewMessage, CallbackQuery]) -> str:
     return game
 
 
-def set_ping_messages():
+async def set_ping_messages():
     # TODO: Code it.
     print('Calm down, will code it soon..')
     ...
 
 
-async def parse_lobby(client: TelegramClient, event: CallbackQuery, lobby: Message) -> str:
+async def parse_lobby(client: 'TelegramClient', event: CallbackQuery, lobby: Message) -> str:
     """Parses lobby to its final form"""
     game = get_lobby_game(lobby=lobby)
     chat_users = dict(await get_chat_users(client=client, event=event, details='uid', with_sender=True))
