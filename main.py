@@ -120,9 +120,9 @@ async def main(config):
         lobby = await event.get_message()
 
         if lobby_exists(lobby=lobby):
+            await delete_previous_pings(client=client, event=event, lobby=lobby)
             for reping in await parse_repings(client=client, event=event, lobby=lobby):
                 newping = await lobby.reply(', '.join(reping))
-                await delete_previous_pings(client=client, event=event, lobby=lobby)
                 update_pings(lobby=lobby, repings=reping, newping=newping)
 
             await event.answer('Repinged users that were not in lobby!', alert=False)
