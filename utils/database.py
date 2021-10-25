@@ -1,4 +1,5 @@
 from telethon.events import CallbackQuery, NewMessage, InlineQuery
+from telethon.tl.types import Message
 from typing import List, Union
 from pony.orm import *
 from utils.lobby import logme

@@ -1,11 +1,9 @@
-import asyncio
 from typing import Union, Tuple
 
 from telethon.tl.types import User
 from telethon.events import NewMessage
 
 from utils.lobby import *
-from utils.database import get_game_subscribers
 
 
 def get_sender_name(sender: User) -> str:  # fuck @divadsn
@@ -81,13 +79,12 @@ async def parse_lobby(client: 'TelegramClient', event: CallbackQuery, lobby: Mes
            f'Lobby: {l_msg}'
 
 
-async def parse_repings(client: 'TelegramClient', event: CallbackQuery, lobby: Message) -> List[str]:
-    pings = list()
+async def parse_repings(client: 'TelegramClient', event: CallbackQuery, lobby: Message) -> List[List[str]]:
     if chat_users := dict(await get_chat_users(client=client, event=event, details='uid', with_sender=False)):
         participants = [user.participant for user in get_lobby_participants(lobby=lobby, in_lobby=False)
                         if user.participant in chat_users]
-        for chunk in [participants[x: x + 5] for x in range(0, len(participants), 5)]:
-            if lobby_chunk := ", ".join(f"[{chat_users[id_]}](tg://user?id={id_})" for id_ in chunk):
-                pings.append(lobby_chunk)
 
-    return pings
+        return [[f"[{chat_users[id_]}](tg://user?id={id_})" for id_ in chunk] for chunk in [participants[x: x + 5] for x in range(0, len(participants), 5)]]
+
+    else:
+        raise Exception('No chat users to load!')

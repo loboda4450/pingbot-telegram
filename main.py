@@ -119,11 +119,13 @@ async def main(config):
 
     @client.on(CallbackQuery(pattern=b'Ping'))
     async def ping_button(event):
+        # TODO[1]: Remove old ping messages
         lobby = await event.get_message()
 
         if lobby_exists(lobby=lobby):
             for reping in await parse_repings(client=client, event=event, lobby=lobby):
-                await lobby.reply(reping)
+                newping = await lobby.reply(', '.join(reping))
+                update_pings(lobby=lobby, repings=reping, newping=newping)
 
             await event.answer('Repinged users that were not in lobby!', alert=False)
         else:
