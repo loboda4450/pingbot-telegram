@@ -116,7 +116,6 @@ async def main(config):
 
     @client.on(CallbackQuery(pattern=b'Ping'))
     async def ping_button(event):
-        # TODO[1]: Remove old ping messages
         lobby = await event.get_message()
 
         if lobby_exists(lobby=lobby):
