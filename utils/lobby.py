@@ -117,9 +117,9 @@ def get_lobby_msg_ids(lobby: Message) -> List[int]:
 
 @db_session
 @logme
-async def penis(client: TelegramClient, query: CallbackQuery = None):
+async def penis(client: TelegramClient, query: CallbackQuery = None, hours=6):
     to_delete = []
-    x = select(l for l in Lobby if l.created < (datetime.now() - timedelta(hours=6)) and
+    x = select(l for l in Lobby if l.created < (datetime.now() - timedelta(hours=hours)) and
                l.ownerid == l.participant and
                l.chatid == query.chat.id)
     for l in x:
@@ -133,11 +133,10 @@ async def penis(client: TelegramClient, query: CallbackQuery = None):
     commit()
 
 
-# @db_session
-# @logme
-# async def cleanup_outdated_lobbies(client: TelegramClient, query: CallbackQuery = None):
-#     while True:
-#         await asyncio.sleep(6 * 60 * 60)
-#         await penis(client=client, query=query)
-
+@db_session
+@logme
+async def cleanup_outdated_lobbies(client: TelegramClient, query: CallbackQuery = None, hours=6):
+    while True:
+        await asyncio.sleep(hours * 60 * 60)
+        await penis(client=client, query=query, hours=hours)
 

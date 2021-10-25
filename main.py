@@ -19,7 +19,7 @@ async def main(config):
     client.start(bot_token=config['bot_token'])
     print("Started")
 
-    @client.on(InlineQuery)
+    @client.on(InlineQuery())
     async def handle_iq(event):
         if event.text == '':
             await event.answer(
@@ -116,6 +116,18 @@ async def main(config):
                 remove_lobby(lobby=lobby)
         else:
             await event.answer('You were not in this lobby!', alert=True)
+
+    @client.on(CallbackQuery(pattern=b'Ping'))
+    async def ping_button(event):
+        lobby = await event.get_message()
+
+        if lobby_exists(lobby=lobby):
+            for reping in await parse_repings(client=client, event=event, lobby=lobby):
+                await lobby.reply(reping)
+
+            await event.answer('Repinged users that were not in lobby!', alert=False)
+        else:
+            await event.answer('Lobby does not exist!', alert=True)
 
     # @client.on(CallbackQuery(pattern=b'Test'))
     # async def test_button(event):
