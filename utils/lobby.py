@@ -140,14 +140,18 @@ async def cleanup_outdated_lobbies(client: TelegramClient, query: CallbackQuery 
         await asyncio.sleep(hours * 60 * 60)
         await penis(client=client, query=query, hours=hours)
 
+
 @db_session
 @logme
 def update_pings(lobby: Message, repings: List, newping: Message):
-    ids = (reping.split('=')[1].replace(')', '') for reping in repings) # extract id from list again... cancer, ik
+    ids = (reping.split('=')[1].replace(')', '') for reping in repings)  # extract id from list again... cancer, ik
     for id_ in ids:
         Lobby.get(lobbyid=lobby.id, chatid=lobby.chat.id, participant=id_).ping = newping.id
 
     commit()
 
-    print('x')
 
+@db_session
+@logme
+def get_ping_ids(lobby: Message):
+    return [x.ping for x in select(l for l in Lobby if l.lobbyid != l.ping and l.chatid == lobby.chat.id and l.lobbyid == lobby.id).distinct()]

@@ -40,9 +40,6 @@ async def main(config):
                     f'Lobby: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})',
                     buttons=[[Button.inline('Ping')], [Button.inline('Join'), Button.inline('Leave')],
                              [Button.inline('Subscribe'), Button.inline('Unsubscribe')]])
-                # buttons=[[Button.inline('Join'), Button.inline('Leave')],
-                #          [Button.inline('Subscribe'), Button.inline('Unsubscribe')],
-                #          [Button.inline('Test')]])
 
                 if add_lobby(event=event, lobby=lobby, participant=event.sender.id, ping=lobby, game=game,
                              in_lobby=True):
@@ -125,15 +122,12 @@ async def main(config):
         if lobby_exists(lobby=lobby):
             for reping in await parse_repings(client=client, event=event, lobby=lobby):
                 newping = await lobby.reply(', '.join(reping))
+                await delete_previous_pings(client=client, event=event, lobby=lobby)
                 update_pings(lobby=lobby, repings=reping, newping=newping)
 
             await event.answer('Repinged users that were not in lobby!', alert=False)
         else:
             await event.answer('Lobby does not exist!', alert=True)
-
-    # @client.on(CallbackQuery(pattern=b'Test'))
-    # async def test_button(event):
-    #     await cleanup_outdated_lobbies(client=client, query=event)
 
     async with client:
         print("Good morning!")

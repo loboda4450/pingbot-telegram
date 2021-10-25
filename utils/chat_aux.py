@@ -84,7 +84,12 @@ async def parse_repings(client: 'TelegramClient', event: CallbackQuery, lobby: M
         participants = [user.participant for user in get_lobby_participants(lobby=lobby, in_lobby=False)
                         if user.participant in chat_users]
 
-        return [[f"[{chat_users[id_]}](tg://user?id={id_})" for id_ in chunk] for chunk in [participants[x: x + 5] for x in range(0, len(participants), 5)]]
+        return [[f"[{chat_users[id_]}](tg://user?id={id_})" for id_ in chunk] for chunk in
+                [participants[x: x + 5] for x in range(0, len(participants), 5)]]
 
     else:
         raise Exception('No chat users to load!')
+
+
+async def delete_previous_pings(client: 'TelegramClient', event: CallbackQuery, lobby: Message) -> None:
+    await client.delete_messages(event.chat.id, get_ping_ids(lobby=lobby))
