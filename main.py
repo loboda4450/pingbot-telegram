@@ -91,6 +91,12 @@ async def main(config):
             try:
                 await lobby.edit(text=msg)
                 await event.answer(f'Joined')
+                # you gotta send a message to bot first in order to receive notifications
+                await client.send_message(get_lobby_owner(lobby=lobby).ownerid, f"[{get_sender_name(event.sender)}]"
+                                                                                f"(tg://user?id={event.sender_id}) "
+                                                                                f"just joined [your lobby!]"
+                                                                                f"(https://t.me/c/{lobby.chat.id}/{lobby.id})")
+
             except MessageNotModifiedError as e:
                 logger.debug(e)
         else:
