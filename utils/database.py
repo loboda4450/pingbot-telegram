@@ -54,5 +54,5 @@ def get_user_games(event: Union[NewMessage, CallbackQuery]) -> List:
 
 @db_session
 @logme
-def get_chat_games(event: Optional[Union[NewMessage, CallbackQuery]]) -> List: # if event passed nothing happens, cuz we cant get chatid from callbackquery :<
+def get_chat_games(event: Union[NewMessage, CallbackQuery, None]) -> List: # if event passed nothing happens, cuz we cant get chatid from callbackquery :<
     return list(select(user.game for user in User).distinct())
