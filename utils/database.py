@@ -49,7 +49,7 @@ def get_game_subscribers(event: Union[NewMessage, CallbackQuery]) -> List:
 @db_session
 @logme
 def get_user_games(event: Union[NewMessage, CallbackQuery]) -> List:
-    return [user.game for user in User.select(userid=event.sender.id)]
+    return list(select(user.game for user in User if user.userid == event.sender.id).distinct())
 
 
 @db_session

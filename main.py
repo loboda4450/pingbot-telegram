@@ -16,7 +16,7 @@ async def main(config):
     logger = logging.getLogger(__name__)
     client = TelegramClient(**config['telethon_settings'])
     print("Starting")
-    client.start(bot_token=config['bot_token'])
+    await client.start(bot_token=config['bot_token'])
     print("Started")
 
     @client.on(InlineQuery())
