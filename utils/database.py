@@ -9,7 +9,7 @@ db = Database("sqlite", "users-orm.sqlite", create_db=True)
 
 class User(db.Entity):
     id = PrimaryKey(int, auto=True)
-    userid = Required(int)
+    userid = Required(int, size=64)
     chatid = Required(int)
     game = Required(str)
     composite_key(userid, chatid, game)
@@ -54,5 +54,6 @@ def get_user_games(event: Union[NewMessage, CallbackQuery]) -> List:
 
 @db_session
 @logme
-def get_chat_games(event: Union[NewMessage, CallbackQuery, None]) -> List: # if event passed nothing happens, cuz we cant get chatid from callbackquery :<
+def get_chat_games(event: Union[
+    NewMessage, CallbackQuery, None]) -> List:  # if event passed nothing happens, cuz we cant get chatid from callbackquery :<
     return list(select(user.game for user in User).distinct())
