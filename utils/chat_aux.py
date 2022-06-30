@@ -79,9 +79,10 @@ async def parse_lobby(client: 'TelegramClient', event: CallbackQuery, lobby: Mes
            f'Lobby: {l_msg}'
 
 
-async def parse_repings(client: 'TelegramClient', event: CallbackQuery, lobby: Message) -> List[List[str]]:
+async def parse_repings(client: 'TelegramClient', event: CallbackQuery, lobby: Message, inside: bool = False) -> List[
+    List[str]]:
     if chat_users := dict(await get_chat_users(client=client, event=event, details='uid', with_sender=False)):
-        participants = [user.participant for user in get_lobby_participants(lobby=lobby, in_lobby=False)
+        participants = [user.participant for user in get_lobby_participants(lobby=lobby, in_lobby=inside)
                         if user.participant in chat_users]
 
         return [[f"[{chat_users[id_]}](tg://user?id={id_})" for id_ in chunk] for chunk in

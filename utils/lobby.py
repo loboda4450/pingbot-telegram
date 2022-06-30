@@ -28,6 +28,12 @@ db.generate_mapping(create_tables=True)
 
 @db_session
 @logme
+def is_lobby_alive():
+    return Lobby.exists()
+
+
+@db_session
+@logme
 def add_lobby(event: CallbackQuery, lobby: Message, participant: int,
               ping: Message, game: str, in_lobby: bool) -> bool:
     if not Lobby.exists(lobbyid=lobby.id, ownerid=event.sender.id, chatid=event.chat.id,
@@ -154,4 +160,5 @@ def update_pings(lobby: Message, repings: List, newping: Message):
 @db_session
 @logme
 def get_ping_ids(lobby: Message):
-    return [x.ping for x in select(l for l in Lobby if l.lobbyid != l.ping and l.chatid == lobby.chat.id and l.lobbyid == lobby.id).distinct()]
+    return [x.ping for x in select(
+        l for l in Lobby if l.lobbyid != l.ping and l.chatid == lobby.chat.id and l.lobbyid == lobby.id).distinct()]

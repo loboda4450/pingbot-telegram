@@ -1,7 +1,7 @@
-from telethon.events import CallbackQuery, NewMessage, InlineQuery
-from telethon.tl.types import Message
 from typing import List, Union
 from pony.orm import *
+from telethon.events import CallbackQuery, NewMessage
+
 from utils.lobby import logme
 
 db = Database("sqlite", "users-orm.sqlite", create_db=True)
@@ -16,6 +16,12 @@ class User(db.Entity):
 
 
 db.generate_mapping(create_tables=True)
+
+
+@db_session
+@logme
+def is_user_alive():
+    return User.exists()
 
 
 @db_session

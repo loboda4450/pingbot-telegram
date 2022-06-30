@@ -5,6 +5,7 @@ import yaml
 
 from telethon import Button
 from telethon.errors import MessageNotModifiedError
+from telethon.events import InlineQuery
 
 from utils.database import *
 from utils.chat_aux import *
@@ -18,6 +19,17 @@ async def main(config):
     print("Starting")
     await client.start(bot_token=config['bot_token'])
     print("Started")
+
+    @client.on(NewMessage(pattern='/status'))
+    async def status(event):
+        if is_user_alive and is_lobby_alive:
+            await event.reply("I'm alive!")
+        elif is_user_alive and not is_lobby_alive:
+            await event.reply("Lobby's dead")
+        elif not is_user_alive and is_lobby_alive:
+            await event.reply("User's dead")
+        else:
+            await event.reply("Database's dead")
 
     @client.on(InlineQuery())
     async def handle_iq(event):
@@ -38,7 +50,8 @@ async def main(config):
                     f'Owner: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})\n'
                     f'Game: {game}\n'
                     f'Lobby: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})',
-                    buttons=[[Button.inline('Ping')], [Button.inline('Join'), Button.inline('Leave')],
+                    buttons=[[Button.inline('Ping'), Button.inline('Pong')],
+                             [Button.inline('Join'), Button.inline('Leave')],
                              [Button.inline('Subscribe'), Button.inline('Unsubscribe')]])
 
                 if add_lobby(event=event, lobby=lobby, participant=event.sender.id, ping=lobby, game=game,
@@ -131,6 +144,20 @@ async def main(config):
                 update_pings(lobby=lobby, repings=reping, newping=newping)
 
             await event.answer('Repinged users that were not in lobby!', alert=False)
+        else:
+            await event.answer('Lobby does not exist!', alert=True)
+
+    @client.on(CallbackQuery(pattern=b'Pong'))
+    async def pong_button(event):
+        lobby = await event.get_message()
+
+        if lobby_exists(lobby=lobby):
+            await delete_previous_pings(client=client, event=event, lobby=lobby)
+            for reping in await parse_repings(client=client, event=event, lobby=lobby, inside=True):
+                newping = await lobby.reply(', '.join(reping))
+                update_pings(lobby=lobby, repings=reping, newping=newping)
+
+            await event.answer('Repinged users that are in lobby!', alert=False)
         else:
             await event.answer('Lobby does not exist!', alert=True)
 
