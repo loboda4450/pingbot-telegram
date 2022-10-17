@@ -43,7 +43,7 @@ async def main(config):
 
     @client.on(NewMessage(pattern='/announce'))
     async def announce(event):
-        if game := event.text.split(' ', 1)[1]:
+        if game := ' '.join(event.text.split(' ', 1)[1].split()):
             if chat_users := dict(await get_chat_users(client=client, event=event, details='uid', with_sender=False)):
                 game_users = [user for user in get_game_subscribers(event) if user in chat_users]
                 lobby = await event.reply(
