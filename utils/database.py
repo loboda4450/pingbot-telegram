@@ -49,7 +49,7 @@ def remove_subscriber(event: Union[NewMessage, CallbackQuery], game: str) -> boo
 def get_game_subscribers(event: Union[NewMessage, CallbackQuery]) -> List:
     return list(select(user.userid for user in User if user.chatid == event.chat.id and
                        user.userid != event.sender.id and
-                       user.game == event.text.split(' ', 1)[1]))
+                       user.game == ' '.join(event.text.split(' ', 1)[1].split())))
 
 
 @db_session
