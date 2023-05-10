@@ -50,7 +50,7 @@ async def main(config):
                     f'Owner: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})\n'
                     f'Game: {game}\n'
                     f'Lobby: [{get_sender_name(event.sender)}](tg://user?id={event.sender.id})',
-                    buttons=[[Button.inline('Ping'), Button.inline('Pong')],
+                    buttons=[[Button.inline('Ping subs'), Button.inline('Ping lobby')],
                              [Button.inline('Join'), Button.inline('Leave')],
                              [Button.inline('Subscribe'), Button.inline('Unsubscribe')]])
 
@@ -133,8 +133,8 @@ async def main(config):
         else:
             await event.answer('You were not in this lobby!', alert=True)
 
-    @client.on(CallbackQuery(pattern=b'Ping'))
-    async def ping_button(event):
+    @client.on(CallbackQuery(pattern=b'Ping subs'))
+    async def ping_subs_button(event):
         lobby = await event.get_message()
 
         if lobby_exists(lobby=lobby):
@@ -147,8 +147,8 @@ async def main(config):
         else:
             await event.answer('Lobby does not exist!', alert=True)
 
-    @client.on(CallbackQuery(pattern=b'Pong'))
-    async def pong_button(event):
+    @client.on(CallbackQuery(pattern=b'Ping lobby'))
+    async def ping_lobby_button(event):
         lobby = await event.get_message()
 
         if lobby_exists(lobby=lobby):
