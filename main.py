@@ -37,9 +37,9 @@ async def main(config):
             await event.answer(
                 [event.builder.article(f'{game}', text=f'/announce {game}') for game in get_user_games(event)])
 
-        elif event.text == '.g' or event.text == '.games':
+        elif event.text == '/s' or event.text == '/subscribe':
             await event.answer(
-                [event.builder.article(f'{game}', text=f'/subscribe {game}') for game in get_chat_games()])
+                [event.builder.article(f'{game}', text=f'/subscribe {game}') for game in get_games()])
 
     @client.on(NewMessage(pattern='/announce'))
     async def announce(event):
