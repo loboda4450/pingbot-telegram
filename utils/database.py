@@ -1,4 +1,5 @@
 from typing import List, Union
+from yaml import safe_load
 from pony.orm import *
 from telethon.events import CallbackQuery, NewMessage
 
