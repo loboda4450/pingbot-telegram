@@ -11,7 +11,7 @@ with open("config.yml", 'r') as f:
 if any(pg_att is None for pg_att in (config['postgres_url'], config['postgres_user'], config['postgres_password'], config['postgres_db'])):
     db = Database("sqlite", "users-orm.sqlite", create_db=True)
 else:
-    db = Database(provider='postgres', dsn=config['postgres_url'], user=config['postgres_user'],
+    db = Database(provider='postgres', host=config['postgres_url'], user=config['postgres_user'],
                   password=config['postgres_password'], database=config['postgres_db'])
 
 
