@@ -2,7 +2,7 @@ version: '3.7'
 
 services:
   bot:
-    image: ghcr.io/loboda4450/pingbot-telegram:72e29ab4e7018dfd25c1b2c8a6bae04ee35c4e53
+    image: ghcr.io/loboda4450/pingbot-telegram:185dfd2eadda3d1bb4c7988ba1e87c402ff93d31
     volumes:
       - ./config.yml:/app/config.yml:ro
       - ./utils/users-orm.sqlite:/app/utils/users-orm.sqlite
