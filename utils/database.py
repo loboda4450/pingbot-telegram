@@ -3,8 +3,13 @@ from pony.orm import *
 from telethon.events import CallbackQuery, NewMessage
 
 from utils.lobby import logme
+config = yaml.safe_load(f)
 
-db = Database("sqlite", "users-orm.sqlite", create_db=True)
+if any(pg_att is None for pg_att in (config['postgres_url'], config['postgres_user'], config['postgres_password'], config['postgres_db'])):
+    db = Database("sqlite", "users-orm.sqlite", create_db=True)
+else:
+    db = Database(provider='postgres', dsn=config['postgres_url'], user=config['postgres_user'],
+                  password=config['postgres_password'], database=config['postgres_db'])
 
 
 class User(db.Entity):

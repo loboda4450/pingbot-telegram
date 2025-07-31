@@ -1,3 +1,4 @@
 PyYAML~=6.0
 Telethon~=1.24.0
 pony~=0.7.6
+psycopg2-binary~=2.9.10

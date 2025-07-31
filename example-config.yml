@@ -11,3 +11,8 @@ telethon_settings:
   api_hash: ABCDEFGHIJKLMNOUPRSTUWXYZ1234567
 
 log_level: DEBUG
+
+postgres_url:
+postgres_user:
+postgres_password:
+postgres_db:
