@@ -4,7 +4,7 @@ from pony.orm import *
 from telethon.events import CallbackQuery, NewMessage
 
 from utils.lobby import logme
-config = yaml.safe_load(f)
+config = safe_load(f)
 
 if any(pg_att is None for pg_att in (config['postgres_url'], config['postgres_user'], config['postgres_password'], config['postgres_db'])):
     db = Database("sqlite", "users-orm.sqlite", create_db=True)
