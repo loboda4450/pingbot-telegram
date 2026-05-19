@@ -6,9 +6,18 @@ from telethon.events import CallbackQuery
 from telethon.tl.custom import Message
 from telethon.client import TelegramClient
 from pony.orm import *
+from yaml import safe_load
+
 from utils.logme import logme
 
-db = Database("sqlite", "users-orm.sqlite", create_db=True)
+with open("config.yml", 'r') as f:
+    config = safe_load(f)
+
+if any(pg_att is None for pg_att in (config['postgres_url'], config['postgres_user'], config['postgres_password'], config['postgres_db'])):
+    db = Database("sqlite", "users-orm.sqlite", create_db=True)
+else:
+    db = Database(provider='postgres', host=config['postgres_url'], user=config['postgres_user'],
+                  password=config['postgres_password'], database=config['postgres_db'])
 
 
 class Lobby(db.Entity):
