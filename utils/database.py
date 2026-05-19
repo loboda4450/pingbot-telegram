@@ -18,7 +18,7 @@ else:
 class User(db.Entity):
     id = PrimaryKey(int, auto=True)
     userid = Required(int, size=64)
-    chatid = Required(int)
+    chatid = Required(int, size=64)
     game = Required(str)
     composite_key(userid, chatid, game)
 

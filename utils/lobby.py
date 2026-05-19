@@ -15,7 +15,7 @@ class Lobby(db.Entity):
     id = PrimaryKey(int, auto=True)
     lobbyid = Required(int)
     ownerid = Required(int, size=64)
-    chatid = Required(int)
+    chatid = Required(int, size=64)
     game = Required(str)
     participant = Required(int, size=64)
     ping = Optional(int)
